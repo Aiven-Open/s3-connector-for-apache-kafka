@@ -8,20 +8,24 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
+
+import io.aiven.kafka.connect.s3.templating.TemplatingEngine;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +57,16 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     }
 
     CompressionType outputCompression = CompressionType.GZIP;
+
+    private final TemplatingEngine templatingEngine = new TemplatingEngine();
+    {
+        templatingEngine.bindVariable("utc_date",
+                () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        );
+        templatingEngine.bindVariable("local_date",
+                () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        );
+    }
 
     @Override
     public String version() {
@@ -174,11 +188,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             // identify or allocate a new output stream for topic/partition combination
             OutputStream stream = this.output_streams.get(tp);
             if (stream == null) {
-                String prefix = this.taskConfig.get(AivenKafkaConnectS3Constants.AWS_S3_PREFIX);
-                if (prefix == null) {
-                   prefix = "";
-                }
-                String keyName = prefix + topic + "-" + partition + "-" + String.format("%010d", record.kafkaOffset());
+                String keyName = getS3Prefix() + topic + "-" + partition + "-" + String.format("%010d", record.kafkaOffset());
                 if (this.outputCompression == CompressionType.GZIP) {
                     keyName = keyName + ".gz";
                 }
@@ -265,5 +275,13 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                 this.output_streams.remove(tp);
             }
         }
+    }
+
+    private String getS3Prefix() {
+        final String prefixTemplate = this.taskConfig.get(AivenKafkaConnectS3Constants.AWS_S3_PREFIX);
+        if (prefixTemplate == null) {
+            return "";
+        }
+        return templatingEngine.render(prefixTemplate);
     }
 }
