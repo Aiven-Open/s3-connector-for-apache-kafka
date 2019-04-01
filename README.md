@@ -4,7 +4,7 @@
 
 ### S3 Object names
 
-S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws_s3_prefix>]<topic>-<partition>-<startoffset>[.gz]`. The .gz extension is used if gzip compression is used, see `output_compression` below.
+S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws_s3_prefix>]<topic>-<partition>-<startoffset>[.gz]`. The `.gz` extension is used if gzip compression is used, see `output_compression` below.
 
 The connector creates one file per Kafka Connect `offset.flush.interval.ms` setting for partitions that have received new messages during that period. The setting defaults to 60 seconds.
 
@@ -22,45 +22,64 @@ bWVzc2FnZV9jb250ZW50,cGFydGl0aW9uX2tleQ==,1511801218777
 
 ### Connector Configuration
 
- - aws_access_key_id:
+#### `aws_access_key_id`
 
-    AWS Access Key ID for accessing S3 bucket. Mandatory.
+AWS Access Key ID for accessing S3 bucket. Mandatory.
 
- - aws_secret_access_key:
+#### `aws_secret_access_key`
 
-    AWS S3 Secret Access Key. Mandatory.
+AWS S3 Secret Access Key. Mandatory.
 
- - aws_s3_bucket:
+#### `aws_s3_region`
 
-    Name of an existing bucket for storing the records. Mandatory.
+Name of the region for the bucket used for storing the records. Defaults to `us-east-1`.
 
- - aws_s3_region:
+#### `aws_s3_bucket`
 
-    Name of the region for the bucket used for storing the records. Defaults to us-east-1.
+Name of an existing bucket for storing the records. Mandatory.
 
- - connector.class:
+#### `aws_s3_prefix`
 
-    Connector class name, in this case: io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector
+The prefix that will be added to the file name in the bucket.
+Can be used for putting output files into a subdirectory.
 
- - key.converter:
+##### Templating
 
-    Connector specific key encoding, must be set to org.apache.kafka.connect.converters.ByteArrayConverter
+The parameter supports templating using `{{ var }}` for variables that will be substituted with values.
 
- - output_compression:
+Currently supported variables are:
+- `{{ utc_date }}` - the current date in UTC time zone.
+- `{{ local_date }}` - the current date in the local time zone.
 
-    Compression type for output files. Supported algorithms are gzip and none. Defaults to gzip.
+Both dates are formatted in ISO 8601 format, e.g.: `2019-03-26`.
 
- - output_fields:
+The date of the moment when the file is being uploaded to S3 is used.
 
-    A comma separated list of fields to include in output. Supported values are: key, offset, timestamp and value. Defaults to value.
+For example: `some-directory/{{ utc_date }}/`.
 
- - topics:
+#### `connector.class`
 
-    Topics to subscribe to. See Kafka Connect documentation for details. E.g. demo_topic,another_topic
+Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector`.
 
- - value.converter:
+#### `key.converter`
 
-    Connector specific value encoding, must be set to org.apache.kafka.connect.converters.ByteArrayConverter
+Connector-specific key encoding, must be set to `org.apache.kafka.connect.converters.ByteArrayConverter`.
+
+#### `value.converter`
+
+Connector-specific value encoding, must be set to `org.apache.kafka.connect.converters.ByteArrayConverter`.
+
+#### `topics`
+
+Topics to subscribe to. See Kafka Connect documentation for details. E.g. `demo_topic,another_topic`.
+
+#### `output_compression`
+
+Compression type for output files. Supported algorithms are `gzip` and `none`. Defaults to `gzip`.
+
+#### `output_fields`
+
+A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
 
 ### Example
 
