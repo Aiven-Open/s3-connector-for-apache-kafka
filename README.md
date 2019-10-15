@@ -20,6 +20,18 @@ bWVzc2FnZV9jb250ZW50,cGFydGl0aW9uX2tleQ==,1511801218777
 
 ## Usage
 
+### S3 permissions
+
+S3 connector needs the following permissions to the specified bucket:
+
+* ``s3:GetObject``
+* ``s3:PutObject``
+* ``s3:AbortMultipartUpload``
+* ``s3:ListMultipartUploadParts``
+* ``s3:ListBucketMultipartUploads``
+
+In case of ``Access Denied`` error see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
+
 ### Connector Configuration
 
 #### `aws_access_key_id`
