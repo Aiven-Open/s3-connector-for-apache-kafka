@@ -60,18 +60,18 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     private final TemplatingEngine templatingEngine = new TemplatingEngine();
     {
-        ZonedDateTime dateTime = ZonedDateTime.now(ZoneId.of("UTC"));
+        ZonedDateTime utcDateTime = ZonedDateTime.now(ZoneId.of("UTC"));
         templatingEngine.bindVariable("utc_date",
-                () -> dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                () -> utcDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
         templatingEngine.bindVariable("utc_year",
-            () -> String.valueOf(dateTime.getYear())
+            () -> String.valueOf(utcDateTime.getYear())
         );
         templatingEngine.bindVariable("utc_month",
-            () ->  String.valueOf(dateTime.getMonth())
+            () ->  String.valueOf(utcDateTime.getMonth())
         );
         templatingEngine.bindVariable("utc_day",
-            () -> String.valueOf(dateTime.getDayOfMonth())
+            () -> String.valueOf(utcDateTime.getDayOfMonth())
         );
     
         LocalDateTime localDateTime = LocalDateTime.now();
