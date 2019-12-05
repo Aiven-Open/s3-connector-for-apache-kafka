@@ -61,7 +61,13 @@ The parameter supports templating using `{{ var }}` for variables that will be s
 
 Currently supported variables are:
 - `{{ utc_date }}` - the current date in UTC time zone.
+- `{{ utc_year }}` - the current year in UTC time zone.
+- `{{ utc_month }}` - the current month in UTC time zone.
+- `{{ utc_day }}` - the current day of the month in UTC time zone.
 - `{{ local_date }}` - the current date in the local time zone.
+- `{{ local_year }}` - the current year in the local time zone.
+- `{{ local_month }}` - the current month in the local time zone.
+- `{{ local_day }}` - the current day of the month in the local time zone.
 
 Both dates are formatted in ISO 8601 format, e.g.: `2019-03-26`.
 

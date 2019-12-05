@@ -1,4 +1,4 @@
-short_ver = $(shell git describe --abbrev=0 2>/dev/null || echo 0.0.1)
+short_ver = $(shell git describe --abbrev=0 2>/dev/null || echo 0.0.2)
 long_ver = $(shell git describe --long 2>/dev/null || echo $(short_ver)-0-unknown-g`git describe --always`)
 
 SOURCES := \

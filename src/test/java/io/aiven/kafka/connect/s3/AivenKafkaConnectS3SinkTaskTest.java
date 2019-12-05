@@ -174,6 +174,34 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
         task.stop();
     }
+    
+    @Test
+    public void testS3UTCYearMonthDayPrefix() {
+        AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        
+        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
+        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix/{{ utc_year }}/{{ utc_month }}/{{ utc_day }}/");
+        task.start(properties);
+        
+        TopicPartition tp = new TopicPartition("test-topic", 0);
+        Collection<TopicPartition> tps = Collections.singletonList(tp);
+        task.open(tps);
+        
+        task.put(createBatchOfRecord(0, 100));
+        
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(tp, new OffsetAndMetadata(100));
+        task.flush(offsets);
+        
+        String expectedFileName = String.format("prefix/%s/%s/%s/test-topic-0-0000000000.gz",
+            ZonedDateTime.now(ZoneId.of("UTC")).getYear(),
+            ZonedDateTime.now(ZoneId.of("UTC")).getMonth(),
+            ZonedDateTime.now(ZoneId.of("UTC")).getDayOfMonth());
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
+        
+        task.stop();
+    }
 
     @Test
     public void testS3LocalDatePrefix() {
@@ -198,6 +226,34 @@ public class AivenKafkaConnectS3SinkTaskTest {
                 LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE));
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
+        task.stop();
+    }
+    
+    @Test
+    public void testS3LocalDateYearMonthDayPrefix() {
+        AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+    
+        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
+        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix/{{ utc_year }}/{{ utc_month }}/{{ utc_day }}/");
+        task.start(properties);
+        
+        TopicPartition tp = new TopicPartition("test-topic", 0);
+        Collection<TopicPartition> tps = Collections.singletonList(tp);
+        task.open(tps);
+        
+        task.put(createBatchOfRecord(0, 100));
+        
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(tp, new OffsetAndMetadata(100));
+        task.flush(offsets);
+    
+        String expectedFileName = String.format("prefix/%s/%s/%s/test-topic-0-0000000000.gz",
+            LocalDateTime.now().getYear(),
+            LocalDateTime.now().getMonth(),
+            LocalDateTime.now().getDayOfMonth());
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
+        
         task.stop();
     }
 

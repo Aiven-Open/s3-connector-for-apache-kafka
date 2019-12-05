@@ -30,3 +30,6 @@ install target/aiven-kafka-connect-s3-%{version}.jar %{buildroot}/opt/aiven-kafk
 %changelog
 * Wed Oct  5 2016 Heikki Nousiainen <htn@aiven.io>
 - First build
+
+* Thurs Dec 5 2019 Alan Kehoe <alankehoe111@gmail.com>
+- Add the following template variables [utc_year, utc_month, utc_day, local_year, local_month, local_day]
