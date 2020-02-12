@@ -17,6 +17,9 @@ plugins {
 
 }
 
+group = "io.aiven"
+version = hasProperty("module_version") ? "$project.module_version" : 'unknown'
+
 repositories {
     jcenter()
 }
@@ -118,16 +121,4 @@ dependencies {
     testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
     testImplementation 'junit:junit:4.12'
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
-}
-
-group = 'io.aiven'
-version = '${module_version}'
-sourceCompatibility = '1.8'
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            from(components.java)
-        }
-    }
 }

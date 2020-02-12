@@ -8,7 +8,7 @@ SOURCES := \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3OutputStream.java \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3SinkConnector.java \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3SinkTask.java \
-	pom.xml \
+	build.gradle \
 	aiven-kafka-connect-s3.spec
 
 all: rpm

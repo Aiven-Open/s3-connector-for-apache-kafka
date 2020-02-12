@@ -7,7 +7,7 @@ License: Apache (v2)
 URL: https://aiven.io/
 Source0: aiven-kafka-connect-s3-src.tar
 BuildArch: noarch
-BuildRequires: java, maven
+BuildRequires: java
 Requires: java
 Packager: Heikki Nousiainen <htn@aiven.io>
 
@@ -18,11 +18,11 @@ Aiven Kafka Connect S3 Connector
 %setup
 
 %build
-mvn -Dmodule_version=%{major_version} package
+./gradlew -Pmodule_version=%{major_version} clean build
 
 %install
 %{__mkdir_p} %{buildroot}/opt/aiven-kafka/libs
-install target/aiven-kafka-connect-s3-%{version}.jar %{buildroot}/opt/aiven-kafka/libs/aiven-kafka-connect-s3-%{version}.jar
+install build/libs/aiven-kafka-connect-s3-%{version}.jar %{buildroot}/opt/aiven-kafka/libs/aiven-kafka-connect-s3-%{version}.jar
 
 %files
 /opt/aiven-kafka/libs/aiven-kafka-connect-s3-%{version}.jar
