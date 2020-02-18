@@ -8,7 +8,9 @@ SOURCES := \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3OutputStream.java \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3SinkConnector.java \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3SinkTask.java \
-	pom.xml \
+	build.gradle \
+	gradle/ \
+	gradlew \
 	aiven-kafka-connect-s3.spec
 
 all: rpm
@@ -33,4 +35,4 @@ rpm: $(SOURCES)
 	cp "$(CURDIR)/rpmbuild/RPMS/noarch"/*.rpm "$@/"
 
 test:
-	mvn -Dmodule_version=0.0.1 test
+	./gradlew -Podule_version=0.0.1 test
