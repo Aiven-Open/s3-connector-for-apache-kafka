@@ -23,7 +23,8 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 
 public class AivenKafkaConnectS3Config {
     public static ConfigDef newConfigDef() {
-        ConfigDef configDef = new ConfigDef();
+
+        final ConfigDef configDef = new ConfigDef();
 
         configDef.define(
             AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID,
@@ -74,9 +75,9 @@ public class AivenKafkaConnectS3Config {
             Type.STRING,
             AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_GZIP,
             Importance.MEDIUM,
-            "Output compression. Valid values are: " +
-                AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_GZIP + " and " +
-                AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_NONE
+            "Output compression. Valid values are: "
+                + AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_GZIP + " and "
+                + AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_NONE
         );
 
         configDef.define(
@@ -84,11 +85,11 @@ public class AivenKafkaConnectS3Config {
             Type.STRING,
             AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE,
             Importance.MEDIUM,
-            "Output fields. A comma separated list of one or more: " +
-                AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY + ", " +
-                AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET + ", " +
-                AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP + ", " +
-                AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE
+            "Output fields. A comma separated list of one or more: "
+                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY + ", "
+                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET + ", "
+                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP + ", "
+                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE
         );
 
         return configDef;

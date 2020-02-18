@@ -49,7 +49,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AivenKafkaConnectS3SinkTask extends SinkTask {
-    private static final Logger logger = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
 
     private Map<String, String> taskConfig;
 
@@ -59,7 +60,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     private AmazonS3 s3Client;
 
-    private Map<TopicPartition, OutputStream> output_streams = new HashMap<TopicPartition, OutputStream>();
+    private Map<TopicPartition, OutputStream> outputStreams = new HashMap<>();
 
     private enum OutputFieldType {
         KEY,
@@ -68,7 +69,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         VALUE
     }
 
-    OutputFieldType[] output_fields;
+    OutputFieldType[] outputFields;
 
     private enum CompressionType {
         GZIP,
@@ -78,12 +79,17 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     CompressionType outputCompression = CompressionType.GZIP;
 
     private final TemplatingEngine templatingEngine = new TemplatingEngine();
+
     {
         templatingEngine.bindVariable("utc_date",
-                () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
+            () -> {
+                return ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            }
         );
         templatingEngine.bindVariable("local_date",
-                () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            () -> {
+                return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            }
         );
     }
 
@@ -93,13 +99,13 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     }
 
     @Override
-    public void start(Map<String, String> props) {
+    public void start(final Map<String, String> props) {
         this.taskConfig = new HashMap<>(props);
-        logger.info("AivenKafkaConnectS3SinkTask starting");
+        LOGGER.info("AivenKafkaConnectS3SinkTask starting");
 
-        AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
+        final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
 
-        BasicAWSCredentials awsCreds = new BasicAWSCredentials(
+        final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
             props.get(AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID),
             props.get(AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY)
         );
@@ -110,12 +116,12 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             region = Regions.US_EAST_1.getName();
         }
 
-        String endpoint_url = props.get(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT);
+        final String endpointUrl = props.get(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT);
 
-        if (endpoint_url == null || endpoint_url.equals("")) {
+        if (endpointUrl == null || endpointUrl.equals("")) {
             builder.withRegion(Regions.fromName(region));
         } else {
-            builder.withEndpointConfiguration(new EndpointConfiguration(endpoint_url, region));
+            builder.withEndpointConfiguration(new EndpointConfiguration(endpointUrl, region));
             builder.withPathStyleAccessEnabled(true);
         }
 
@@ -128,24 +134,25 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         if (fieldConfig == null) {
             fieldConfig = AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE;
         }
-        String[] fieldNames = fieldConfig.split("\\s*,\\s*");
-        this.output_fields = new OutputFieldType[fieldNames.length];
+        final String[] fieldNames = fieldConfig.split("\\s*,\\s*");
+        this.outputFields = new OutputFieldType[fieldNames.length];
         for (int i = 0; i < fieldNames.length; i++) {
             if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY)) {
-                this.output_fields[i] = OutputFieldType.KEY;
+                this.outputFields[i] = OutputFieldType.KEY;
             } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET)) {
-                this.output_fields[i] = OutputFieldType.OFFSET;
+                this.outputFields[i] = OutputFieldType.OFFSET;
             } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP)) {
-                this.output_fields[i] = OutputFieldType.TIMESTAMP;
+                this.outputFields[i] = OutputFieldType.TIMESTAMP;
             } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE)) {
-                this.output_fields[i] = OutputFieldType.VALUE;
+                this.outputFields[i] = OutputFieldType.VALUE;
             } else {
                 throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");
             }
         }
 
-        String compression = props.get(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION);
+        final String compression = props.get(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION);
         if (compression != null) {
+            //FIXME simplify if/else statements
             if (compression.equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_GZIP)) {
                 // default
             } else if (compression.equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_NONE)) {
@@ -158,96 +165,103 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     @Override
     public void stop() {
-        logger.info("AivenKafkaConnectS3SinkTask stopping");
-        for (TopicPartition tp: this.output_streams.keySet()) {
-            OutputStream stream = this.output_streams.get(tp);
+        LOGGER.info("AivenKafkaConnectS3SinkTask stopping");
+        for (final TopicPartition tp: this.outputStreams.keySet()) {
+            final OutputStream stream = this.outputStreams.get(tp);
             if (stream != null) {
                 try {
                     stream.close();
-                } catch (IOException e) {
-                    logger.error("Error closing stream " + tp.topic() + "-" + tp.partition() + ": " + e);
+                } catch (final IOException e) {
+                    LOGGER.error("Error closing stream " + tp.topic() + "-" + tp.partition() + ": " + e);
                 }
-                this.output_streams.remove(tp);
+                this.outputStreams.remove(tp);
             }
         }
     }
 
     @Override
-    public void open(Collection<TopicPartition> partitions) {
+    public void open(final Collection<TopicPartition> partitions) {
         // We don't need to do anything here; we'll create the streams on first message on a partition
-        for (TopicPartition tp: partitions) {
-            logger.info("New assignment " + tp.topic() + "#" + tp.partition());
+        for (final TopicPartition tp: partitions) {
+            LOGGER.info("New assignment " + tp.topic() + "#" + tp.partition());
         }
     }
 
     @Override
-    public void close(Collection<TopicPartition> partitions) throws ConnectException {
-        for (TopicPartition tp: partitions) {
-            logger.info("Unassigned " + tp.topic() + "#" + tp.partition());
-            OutputStream stream = this.output_streams.get(tp);
+    public void close(final Collection<TopicPartition> partitions) throws ConnectException {
+        for (final TopicPartition tp: partitions) {
+            LOGGER.info("Unassigned " + tp.topic() + "#" + tp.partition());
+            final OutputStream stream = this.outputStreams.get(tp);
             if (stream != null) {
                 try {
                     stream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     throw new ConnectException(e);
                 }
-                this.output_streams.remove(tp);
+                this.outputStreams.remove(tp);
             }
         }
     }
 
     @Override
-    public void put(Collection<SinkRecord> records) throws ConnectException {
-        logger.info("Processing " + records.size() + " records");
-        for (SinkRecord record: records) {
-            String topic = record.topic();
-            Integer partition = record.kafkaPartition();
-            TopicPartition tp = new TopicPartition(topic, partition);
+    public void put(final Collection<SinkRecord> records) throws ConnectException {
+        LOGGER.info("Processing " + records.size() + " records");
+        for (final SinkRecord record: records) {
+            final String topic = record.topic();
+            final Integer partition = record.kafkaPartition();
+            final TopicPartition tp = new TopicPartition(topic, partition);
 
             // identify or allocate a new output stream for topic/partition combination
-            OutputStream stream = this.output_streams.get(tp);
+            OutputStream stream = this.outputStreams.get(tp);
             if (stream == null) {
-                String keyName = getS3Prefix() + topic + "-" + partition + "-" + String.format("%010d", record.kafkaOffset());
+                String keyName = getS3Prefix() + topic
+                    + "-" + partition
+                    + "-" + String.format("%010d", record.kafkaOffset());
                 if (this.outputCompression == CompressionType.GZIP) {
                     keyName = keyName + ".gz";
                 }
-                stream = new AivenKafkaConnectS3OutputStream(this.s3Client, this.taskConfig.get(AivenKafkaConnectS3Constants.AWS_S3_BUCKET), keyName);
+                stream =
+                    new AivenKafkaConnectS3OutputStream(
+                        this.s3Client,
+                        this.taskConfig.get(AivenKafkaConnectS3Constants.AWS_S3_BUCKET),
+                        keyName
+                    );
                 if (this.outputCompression == CompressionType.GZIP) {
                     try {
                         stream = new GZIPOutputStream(stream);
-                    } catch (IOException e) {
+                    } catch (final IOException e) {
                         throw new ConnectException(e);
                     }
                 }
-                this.output_streams.put(tp, stream);
+                this.outputStreams.put(tp, stream);
             }
 
             // Create output with the requested fields
-            StringBuilder outputRecordBuilder = new StringBuilder(4096);
-            for (int i = 0; i < this.output_fields.length; i++) {
+            final StringBuilder outputRecordBuilder = new StringBuilder(4096);
+            for (int i = 0; i < this.outputFields.length; i++) {
                 if (i > 0) {
                     outputRecordBuilder.append(",");
                 }
 
-                switch (this.output_fields[i]) {
+                switch (this.outputFields[i]) {
                     case KEY:
-                        Object key_raw = record.key();
-                        if (key_raw != null) {
-                            byte[] key = this.keyConverter.fromConnectData(
+                        final Object keyRaw = record.key();
+                        if (keyRaw != null) {
+                            final byte[] key = this.keyConverter.fromConnectData(
                                 record.topic(),
                                 record.valueSchema(),
-                                key_raw
+                                keyRaw
                             );
                             outputRecordBuilder.append(this.b64Encoder.encodeToString(key));
                         }
                         break;
                     case VALUE:
-                        Object value_raw = record.value();
-                        if (value_raw != null) {
-                            byte[] value = this.valueConverter.fromConnectData(
+                        final Object valueRaw = record.value();
+                        if (valueRaw != null) {
+                            final byte[] value = this.valueConverter.fromConnectData(
                                 record.topic(),
                                 record.valueSchema(),
-                                value_raw
+                                valueRaw
                             );
                             outputRecordBuilder.append(this.b64Encoder.encodeToString(value));
                         }
@@ -258,6 +272,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                     case OFFSET:
                         outputRecordBuilder.append(record.kafkaOffset());
                         break;
+                    default:
                 }
             }
             outputRecordBuilder.append("\n");
@@ -265,33 +280,33 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             // write output to the topic/partition specific stream
             try {
                 stream.write(outputRecordBuilder.toString().getBytes());
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new ConnectException(e);
             }
         }
 
         // Send flush signal down the streams, and give opportunity for part uploads
-        for (OutputStream stream: this.output_streams.values()) {
+        for (final OutputStream stream: this.outputStreams.values()) {
             try {
                 stream.flush();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new ConnectException(e);
             }
         }
     }
 
     @Override
-    public void flush(Map<TopicPartition, OffsetAndMetadata> offsets) {
-        for (TopicPartition tp: offsets.keySet()) {
-            OutputStream stream = this.output_streams.get(tp);
+    public void flush(final Map<TopicPartition, OffsetAndMetadata> offsets) {
+        for (final TopicPartition tp: offsets.keySet()) {
+            final OutputStream stream = this.outputStreams.get(tp);
             if (stream != null) {
-                logger.info("Flush records for " + tp.topic() + "-" + tp.partition());
+                LOGGER.info("Flush records for " + tp.topic() + "-" + tp.partition());
                 try {
                     stream.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     throw new ConnectException(e);
                 }
-                this.output_streams.remove(tp);
+                this.outputStreams.remove(tp);
             }
         }
     }

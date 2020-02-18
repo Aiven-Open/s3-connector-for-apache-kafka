@@ -67,7 +67,7 @@ public class AivenKafkaConnectS3MultipartUploadTest {
 
         byte[] data = "foobar".getBytes();
         InputStream stream = new ByteArrayInputStream(data, 0, data.length);
-        mp.upload_part(stream, data.length);
+        mp.uploadPart(stream, data.length);
         mp.commit();
 
         S3Object object = s3Client.getObject(new GetObjectRequest("test-bucket", "test-object"));

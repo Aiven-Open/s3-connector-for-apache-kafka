@@ -28,11 +28,8 @@ import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class AivenKafkaConnectS3SinkConnector extends Connector {
-    private static final Logger logger = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
+
     private Map<String, String> configProperties;
 
     @Override
@@ -46,25 +43,26 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
     }
 
     @Override
-    public void start(Map<String, String> properties) {
-        String[] mandatory_keys = new String[] {
+    public void start(final Map<String, String> properties) {
+        final String[] mandatoryKeys = new String[] {
             AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID,
             AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY,
             AivenKafkaConnectS3Constants.AWS_S3_BUCKET
         };
-        for (String property_key: mandatory_keys) {
-            if (properties.get(property_key) == null) {
-                throw new ConnectException("Mandatory parameter '" + property_key + "' is missing.");
+        for (final String pk: mandatoryKeys) {
+            if (properties.get(pk) == null) {
+                throw new ConnectException("Mandatory parameter '" + pk + "' is missing.");
             }
         }
-        String fieldConfig = properties.get(AivenKafkaConnectS3Constants.OUTPUT_FIELDS);
+        final String fieldConfig = properties.get(AivenKafkaConnectS3Constants.OUTPUT_FIELDS);
         if (fieldConfig != null) {
-            String[] fieldNames = fieldConfig.split("\\s*,\\s*");
+            final String[] fieldNames = fieldConfig.split("\\s*,\\s*");
             for (int i = 0; i < fieldNames.length; i++) {
-                if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY) ||
-                        fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET) ||
-                        fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP) ||
-                        fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE)) {
+                //FIXME simplify if/else statements
+                if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY)
+                    || fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET)
+                    || fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP)
+                    || fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE)) {
                     // pass
                 } else {
                     throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");
@@ -79,9 +77,9 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
     }
 
     @Override
-    public List<Map<String, String>> taskConfigs(int maxTasks) {
-        List<Map<String, String>> taskConfigs = new ArrayList<>();
-        Map<String, String> taskProperties = new HashMap<>();
+    public List<Map<String, String>> taskConfigs(final int maxTasks) {
+        final List<Map<String, String>> taskConfigs = new ArrayList<>();
+        final Map<String, String> taskProperties = new HashMap<>();
         taskProperties.putAll(configProperties);
         for (int i = 0; i < maxTasks; i++) {
             taskConfigs.add(taskProperties);

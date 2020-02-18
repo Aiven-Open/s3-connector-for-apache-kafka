@@ -25,11 +25,8 @@ import java.util.regex.Pattern;
 
 /**
  * A simple templating engine that allows to bind variables to supplier functions.
- *
- * <p>Variable syntax: {@code {{ variable_name }}} (arbitrary number of space inside the braces).
- *
+ * Variable syntax: {@code {{ variable_name }}} (arbitrary number of space inside the braces).
  * Non-bound variables are left as is.
- *
  */
 public final class TemplatingEngine {
     private static Pattern variablePattern = Pattern.compile("\\{\\{\\s*(\\w+)\\s*}}"); // {{ var }}
