@@ -15,15 +15,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import com.amazonaws.auth.BasicAWSCredentials;
+import java.io.IOException;
+import java.util.Random;
+
+import io.aiven.kafka.connect.s3.AivenKafkaConnectS3OutputStream;
+
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import io.aiven.kafka.connect.s3.AivenKafkaConnectS3OutputStream;
 import io.findify.s3mock.S3Mock;
-import java.io.IOException;
-import java.util.Random;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
