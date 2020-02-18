@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2020 Aiven Oy
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package io.aiven.kafka.connect.s3;
 
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -76,7 +93,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     @Override
     public void start(Map<String, String> props) {
         this.taskConfig = new HashMap<>(props);
-        this.logger.info("AivenKafkaConnectS3SinkTask starting");
+        logger.info("AivenKafkaConnectS3SinkTask starting");
 
         AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
 
@@ -146,7 +163,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                 try {
                     stream.close();
                 } catch (IOException e) {
-                    this.logger.error("Error closing stream " + tp.topic() + "-" + tp.partition() + ": " + e);
+                    logger.error("Error closing stream " + tp.topic() + "-" + tp.partition() + ": " + e);
                 }
                 this.output_streams.remove(tp);
             }
@@ -157,14 +174,14 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     public void open(Collection<TopicPartition> partitions) {
         // We don't need to do anything here; we'll create the streams on first message on a partition
         for (TopicPartition tp: partitions) {
-            this.logger.info("New assignment " + tp.topic() + "#" + tp.partition());
+            logger.info("New assignment " + tp.topic() + "#" + tp.partition());
         }
     }
 
     @Override
     public void close(Collection<TopicPartition> partitions) throws ConnectException {
         for (TopicPartition tp: partitions) {
-            this.logger.info("Unassigned " + tp.topic() + "#" + tp.partition());
+            logger.info("Unassigned " + tp.topic() + "#" + tp.partition());
             OutputStream stream = this.output_streams.get(tp);
             if (stream != null) {
                 try {
@@ -179,7 +196,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     @Override
     public void put(Collection<SinkRecord> records) throws ConnectException {
-        this.logger.info("Processing " + records.size() + " records");
+        logger.info("Processing " + records.size() + " records");
         for (SinkRecord record: records) {
             String topic = record.topic();
             Integer partition = record.kafkaPartition();
@@ -266,7 +283,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         for (TopicPartition tp: offsets.keySet()) {
             OutputStream stream = this.output_streams.get(tp);
             if (stream != null) {
-                this.logger.info("Flush records for " + tp.topic() + "-" + tp.partition());
+                logger.info("Flush records for " + tp.topic() + "-" + tp.partition());
                 try {
                     stream.close();
                 } catch (IOException e) {
