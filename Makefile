@@ -1,3 +1,20 @@
+##
+# Copyright (C) 2020 Aiven Oy
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+##
+
 short_ver = $(shell git describe --abbrev=0 2>/dev/null || echo 0.0.1)
 long_ver = $(shell git describe --long 2>/dev/null || echo $(short_ver)-0-unknown-g`git describe --always`)
 
@@ -8,15 +25,16 @@ SOURCES := \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3OutputStream.java \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3SinkConnector.java \
 	src/main/java/io/aiven/kafka/connect/s3/AivenKafkaConnectS3SinkTask.java \
-	pom.xml \
+	build.gradle \
+	gradle/ \
+	gradlew \
 	aiven-kafka-connect-s3.spec
 
 all: rpm
 
 build-dep:
 	sudo dnf install -y --allowerasing --best \
-	   java-1.8.0-openjdk-devel \
-	   maven
+	   rpm-build java-1.8.0-openjdk-devel
 
 clean:
 	$(RM) -r rpm/ rpmbuild/
@@ -33,4 +51,4 @@ rpm: $(SOURCES)
 	cp "$(CURDIR)/rpmbuild/RPMS/noarch"/*.rpm "$@/"
 
 test:
-	mvn -Dmodule_version=0.0.1 test
+	./gradlew -Pmodule_version=0.0.1 test

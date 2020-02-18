@@ -1,0 +1,137 @@
+/*
+ * Copyright (C) 2020 Aiven Oy
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+plugins {
+
+    // https://docs.gradle.org/current/userguide/java_library_plugin.html
+    id "java-library"
+
+    // https://docs.gradle.org/current/userguide/checkstyle_plugin.html
+    id "checkstyle"
+
+    // https://docs.gradle.org/current/userguide/jacoco_plugin.html
+    id "jacoco"
+
+    // https://docs.gradle.org/current/userguide/distribution_plugin.html
+    id "distribution"
+
+    // https://docs.gradle.org/current/userguide/publishing_maven.html
+    id "maven-publish"
+
+}
+
+group = "io.aiven"
+version = hasProperty("module_version") ? "$project.module_version" : 'unknown'
+
+repositories {
+    jcenter()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+checkstyle {
+    toolVersion "8.29"
+    configDir rootProject.file("checkstyle/")
+}
+
+jacoco {
+    toolVersion = "0.8.5"
+}
+
+ext {
+    kafkaVersion = "0.11.0.1"
+    amazonS3Version = "1.11.718"
+    slf4jVersion = "1.7.25"
+}
+
+distributions {
+    main {
+        contents {
+            from jar
+            from configurations.runtimeClasspath
+
+            into("/") {
+                from projectDir
+                include "version.txt", "README*", "LICENSE*", "NOTICE*", "licenses/"
+                include "config/"
+            }
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            // Defaults, for clarity
+            groupId = getGroup()
+            artifactId = getName()
+            version = getVersion()
+
+            pom {
+                name = "Aiven Kafka S3 connector"
+                description = "A Kafka S3 sink connector for copying data from Kafka to S3."
+                url = "https://aiven.io"
+                organization {
+                    name = "Aiven Oy"
+                    url = "https://aiven.io"
+                }
+                licenses {
+                    license {
+                        name = "GNU Affero General Public License 3.0"
+                        url = "https://www.gnu.org/licenses/agpl-3.0.en.html"
+                        distribution = "repo"
+                    }
+                }
+                scm {
+                    connection = "scm:git:git://github.com/aiven/aiven-kafka-connect-s3.git"
+                    developerConnection = "scm:git:git@github.com:aiven/aiven-kafka-connect-s3.git"
+                    url = "https://github.com/aiven/aiven-kafka-connect-s3.git"
+                    tag = "HEAD"
+                }
+            }
+        }
+    }
+}
+
+processResources {
+    filesMatching('aiven-kafka-connect-s3-version.properties') {
+        expand(version: version)
+    }
+}
+
+dependencies {
+    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
+    compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
+
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
+    implementation "com.amazonaws:aws-java-sdk-s3:$amazonS3Version"
+
+    runtimeOnly "org.slf4j:slf4j-log4j12:$slf4jVersion"
+
+    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
+    compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
+    compileOnly "org.slf4j:slf4j-api:$slf4jVersion"
+
+    testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
+    testImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
+    testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'io.findify:s3mock_2.11:0.2.3'
+}
