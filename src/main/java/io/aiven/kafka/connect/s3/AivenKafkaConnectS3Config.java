@@ -10,14 +10,14 @@ public class AivenKafkaConnectS3Config {
 
         configDef.define(
             AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID,
-            Type.STRING,
+            Type.PASSWORD,
             Importance.HIGH,
             "AWS Access Key ID"
         );
 
         configDef.define(
             AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY,
-            Type.STRING,
+            Type.PASSWORD,
             Importance.HIGH,
             "AWS Secret Access Key"
         );
