@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2020 Aiven Oy
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 plugins {
 
     // https://docs.gradle.org/current/userguide/java_library_plugin.html
@@ -24,7 +41,7 @@ java {
 }
 
 ext {
-    kafkaVersion = "2.2.0"
+    kafkaVersion = "0.11.0.1"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
 }
@@ -53,8 +70,8 @@ publishing {
             version = getVersion()
 
             pom {
-                name = "Aiven Kafka S2 connector"
-                description = "A Kafka connector S3 for syncing between Kafka ands S3."
+                name = "Aiven Kafka S3 connector"
+                description = "A Kafka S3 sink connector for copying data from Kafka to S3."
                 url = "https://aiven.io"
                 organization {
                     name = "Aiven Oy"
@@ -62,8 +79,8 @@ publishing {
                 }
                 licenses {
                     license {
-                        name = "Apache License 2.0"
-                        url = "http://www.apache.org/licenses/LICENSE-2.0.html"
+                        name = "GNU Affero General Public License 3.0"
+                        url = "https://www.gnu.org/licenses/agpl-3.0.en.html"
                         distribution = "repo"
                     }
                 }
