@@ -17,4 +17,8 @@ public class AivenKafkaConnectS3Constants {
     public static final String OUTPUT_FIELD_NAME_OFFSET = "offset";
     public static final String OUTPUT_FIELD_NAME_TIMESTAMP = "timestamp";
     public static final String OUTPUT_FIELD_NAME_VALUE = "value";
+    public static final Boolean OUTPUT_BASE64_ENCODE = true;
+    public static final String OUTPUT_FORMAT = "output_format" ;
+    public static final String OUTPUT_FORMAT_CSV = "csv";
+    public static final String OUTPUT_FORMAT_JSON = "json";
 }

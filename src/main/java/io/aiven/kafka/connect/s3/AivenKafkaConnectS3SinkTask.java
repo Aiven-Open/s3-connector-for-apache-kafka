@@ -8,6 +8,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -23,6 +24,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.storage.Converter;
@@ -57,6 +59,13 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     }
 
     CompressionType outputCompression = CompressionType.GZIP;
+
+    private enum OutputFormat {
+        CSV,
+        JSON
+    }
+
+    OutputFormat outputFormat = OutputFormat.CSV;
 
     private final TemplatingEngine templatingEngine = new TemplatingEngine();
     {
@@ -177,6 +186,75 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         }
     }
 
+    private byte[] toBytes(String source, Object input) {
+        final byte[] result;
+
+        if (input instanceof String) {
+            String s = (String) input;
+            result = s.getBytes(Charset.forName("UTF-8"));
+        } else if (input instanceof byte[]) {
+            result = (byte[]) input;
+        } else if (null == input) {
+            result = null;
+        } else {
+            throw new DataException(
+                    String.format(
+                            "The %s for the record must be String or Bytes. Consider using the ByteArrayConverter " +
+                                    "or StringConverter if the data is stored in Kafka in the format needed in Redis. " +
+                                    "Another option is to use a single message transformation to transform the data before " +
+                                    "it is written to Redis.",
+                            source
+                    )
+            );
+        }
+
+        return result;
+    }
+
+    private byte[] csvRow(SinkRecord record) {
+        // Create output with the requested fields
+        StringBuilder outputRecordBuilder = new StringBuilder(4096);
+        for (int i = 0; i < this.output_fields.length; i++) {
+            if (i > 0) {
+                outputRecordBuilder.append(",");
+            }
+
+            switch (this.output_fields[i]) {
+                case KEY:
+                    Object key_raw = toBytes("key", record.key());
+                    if (key_raw != null) {
+                        byte[] key = this.keyConverter.fromConnectData(
+                                record.topic(),
+                                record.valueSchema(),
+                                key_raw
+                        );
+                        outputRecordBuilder.append(this.b64Encoder.encodeToString(key));
+                    }
+                    break;
+                case VALUE:
+                    Object value_raw = toBytes("record", record.value());
+                    if (value_raw != null) {
+                        byte[] value = this.valueConverter.fromConnectData(
+                                record.topic(),
+                                record.valueSchema(),
+                                value_raw
+                        );
+                        outputRecordBuilder.append(this.b64Encoder.encodeToString(value));
+                    }
+                    break;
+                case TIMESTAMP:
+                    outputRecordBuilder.append(record.timestamp());
+                    break;
+                case OFFSET:
+                    outputRecordBuilder.append(record.kafkaOffset());
+                    break;
+            }
+        }
+        outputRecordBuilder.append("\n");
+
+        return outputRecordBuilder.toString().getBytes();
+    };
+
     @Override
     public void put(Collection<SinkRecord> records) throws ConnectException {
         this.logger.info("Processing " + records.size() + " records");
@@ -203,49 +281,23 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                 this.output_streams.put(tp, stream);
             }
 
-            // Create output with the requested fields
-            StringBuilder outputRecordBuilder = new StringBuilder(4096);
-            for (int i = 0; i < this.output_fields.length; i++) {
-                if (i > 0) {
-                    outputRecordBuilder.append(",");
-                }
-
-                switch (this.output_fields[i]) {
-                    case KEY:
-                        Object key_raw = record.key();
-                        if (key_raw != null) {
-                            byte[] key = this.keyConverter.fromConnectData(
-                                record.topic(),
-                                record.valueSchema(),
-                                key_raw
-                            );
-                            outputRecordBuilder.append(this.b64Encoder.encodeToString(key));
-                        }
-                        break;
-                    case VALUE:
-                        Object value_raw = record.value();
-                        if (value_raw != null) {
-                            byte[] value = this.valueConverter.fromConnectData(
-                                record.topic(),
-                                record.valueSchema(),
-                                value_raw
-                            );
-                            outputRecordBuilder.append(this.b64Encoder.encodeToString(value));
-                        }
-                        break;
-                    case TIMESTAMP:
-                        outputRecordBuilder.append(record.timestamp());
-                        break;
-                    case OFFSET:
-                        outputRecordBuilder.append(record.kafkaOffset());
-                        break;
-                }
+            byte[] outBytes;
+            switch (this.outputFormat) {
+                case JSON:
+                    String recordString = record.toString();
+                    recordString.concat("\n");
+                    outBytes = recordString.getBytes();
+                    break;
+                case CSV:
+                    outBytes = csvRow(record);
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + this.outputFormat);
             }
-            outputRecordBuilder.append("\n");
 
             // write output to the topic/partition specific stream
             try {
-                stream.write(outputRecordBuilder.toString().getBytes());
+                stream.write(outBytes);
             } catch (IOException e) {
                 throw new ConnectException(e);
             }

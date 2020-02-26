@@ -63,6 +63,24 @@ public class AivenKafkaConnectS3Config {
         );
 
         configDef.define(
+            String.valueOf(AivenKafkaConnectS3Constants.OUTPUT_BASE64_ENCODE),
+            Type.BOOLEAN,
+            true,
+            Importance.MEDIUM,
+            "Enable Base64 encoding of record before inserting into file"
+        );
+
+        configDef.define(
+            AivenKafkaConnectS3Constants.OUTPUT_FORMAT,
+            Type.STRING,
+            AivenKafkaConnectS3Constants.OUTPUT_FORMAT_CSV,
+            Importance.MEDIUM,
+            "Output format of files. Valid values are: " +
+                AivenKafkaConnectS3Constants.OUTPUT_FORMAT_CSV + " and " +
+                AivenKafkaConnectS3Constants.OUTPUT_FORMAT_JSON
+        );
+
+        configDef.define(
             AivenKafkaConnectS3Constants.OUTPUT_FIELDS,
             Type.STRING,
             AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE,
