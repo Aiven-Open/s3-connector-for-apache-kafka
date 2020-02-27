@@ -144,6 +144,17 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                 throw new ConnectException("Unknown output compression type '" + compression + "'.");
             }
         }
+
+        String format = props.get(AivenKafkaConnectS3Constants.OUTPUT_FORMAT);
+        if (format != null) {
+            if (format.equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FORMAT_CSV)) {
+                // default
+            } else if (format.equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FORMAT_JSON)) {
+                this.outputFormat = OutputFormat.JSON;
+            } else {
+                throw new ConnectException("Unknown output format '" + format + "'.");
+            }
+        }
     }
 
     @Override
@@ -284,9 +295,9 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             byte[] outBytes;
             switch (this.outputFormat) {
                 case JSON:
-                    String recordString = record.toString();
-                    recordString.concat("\n");
-                    outBytes = recordString.getBytes();
+                    String recordRow = (String) record.value();
+                    recordRow = recordRow + "\n";
+                    outBytes = toBytes("value", recordRow);
                     break;
                 case CSV:
                     outBytes = csvRow(record);
