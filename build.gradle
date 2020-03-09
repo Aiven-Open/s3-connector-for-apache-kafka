@@ -20,6 +20,12 @@ plugins {
     // https://docs.gradle.org/current/userguide/java_library_plugin.html
     id "java-library"
 
+    // https://docs.gradle.org/current/userguide/checkstyle_plugin.html
+    id "checkstyle"
+
+    // https://docs.gradle.org/current/userguide/jacoco_plugin.html
+    id "jacoco"
+
     // https://docs.gradle.org/current/userguide/distribution_plugin.html
     id "distribution"
 
@@ -38,6 +44,15 @@ repositories {
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+checkstyle {
+    toolVersion "8.29"
+    configDir rootProject.file("checkstyle/")
+}
+
+jacoco {
+    toolVersion = "0.8.5"
 }
 
 ext {
