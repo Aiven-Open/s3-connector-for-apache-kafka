@@ -16,6 +16,8 @@
 
 package io.aiven.kafka.connect.common.templating;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,10 +25,7 @@ import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TemplatingEngineTest {
     @Test

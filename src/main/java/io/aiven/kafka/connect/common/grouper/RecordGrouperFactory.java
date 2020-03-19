@@ -23,13 +23,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
-import io.aiven.kafka.connect.common.templating.Pair;
 import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.s3.S3SinkConfig;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.tuple.Pair;
 
 public final class RecordGrouperFactory {
 
@@ -52,27 +52,27 @@ public final class RecordGrouperFactory {
         SUPPORTED_VARIABLES.values()
             .stream()
             .flatMap(List::stream)
-            .map(Pair::left)
+            .map(Pair::getLeft)
             .collect(Collectors.toSet());
     public static final String SUPPORTED_VARIABLES_LIST =
         SUPPORTED_VARIABLES
             .values().stream()
-            .map(v -> String.join(",", v.stream().map(Pair::left).collect(Collectors.toList())))
+            .map(v -> String.join(",", v.stream().map(Pair::getLeft).collect(Collectors.toList())))
             .collect(Collectors.joining("; "));
     private static final Set<String> KEY_RECORD_REQUIRED_VARS =
         SUPPORTED_VARIABLES.get(KEY_RECORD).stream()
-            .filter(Pair::right)
-            .map(Pair::left)
+            .filter(Pair::getRight)
+            .map(Pair::getLeft)
             .collect(Collectors.toSet());
     private static final Set<String> TOPIC_PARTITION_RECORD_REQUIRED_VARS =
         SUPPORTED_VARIABLES.get(TOPIC_PARTITION_RECORD).stream()
-            .filter(Pair::right)
-            .map(Pair::left)
+            .filter(Pair::getRight)
+            .map(Pair::getLeft)
             .collect(Collectors.toSet());
     private static final Set<String> TOPIC_PARTITION_RECORD_OPT_VARS =
         SUPPORTED_VARIABLES.get(TOPIC_PARTITION_RECORD).stream()
-            .filter(p -> !p.right())
-            .map(Pair::left)
+            .filter(p -> !p.getRight())
+            .map(Pair::getLeft)
             .collect(Collectors.toSet());
 
 

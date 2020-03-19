@@ -39,7 +39,9 @@ public enum Variables {
             true,
             Set.of("YYYY", "MM", "dd", "HH")
         )
-    );
+    ),
+    UTC_DATE("utc_date"),
+    LOCAL_DATE("local_date");
 
     public final String name;
     public final ParameterDescriptor parameterDescriptor;

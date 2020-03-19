@@ -26,8 +26,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 
-import io.aiven.kafka.connect.common.templating.Pair;
-
+import org.apache.commons.lang3.tuple.Pair;
+import org.glassfish.jersey.internal.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +56,7 @@ public class S3SinkTask extends SinkTask {
         LOGGER.info("Processing {} records", records.size());
         records.stream()
             .map(r -> Pair.of(new TopicPartition(r.topic(), r.kafkaPartition()), r))
-            .forEach(p -> streamMap.write(p.left(), p.right()));
+            .forEach(p -> streamMap.write(p.getLeft(), p.getRight()));
     }
 
     @Override
@@ -80,7 +80,7 @@ public class S3SinkTask extends SinkTask {
 
     @Override
     public String version() {
-        return Version.VERSION;
+        return Version.getVersion();
     }
 
 }

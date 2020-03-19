@@ -23,7 +23,7 @@ import org.apache.kafka.common.config.ConfigException;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
 
-public class FileCompressionTypeValidator implements ConfigDef.Validator {
+public class CompressionTypeValidator implements ConfigDef.Validator {
 
     @Override
     public void ensureValid(final String name, final Object value) {

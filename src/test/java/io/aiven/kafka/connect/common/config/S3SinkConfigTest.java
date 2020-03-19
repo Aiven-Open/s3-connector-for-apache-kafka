@@ -16,26 +16,6 @@
 
 package io.aiven.kafka.connect.common.config;
 
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-import org.apache.kafka.common.config.ConfigException;
-
-import io.aiven.kafka.connect.s3.S3SinkConfig;
-
-import com.amazonaws.regions.Regions;
-import com.google.common.collect.Maps;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.FORMAT_TIMESTAMP;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
@@ -55,6 +35,25 @@ import static io.aiven.kafka.connect.s3.S3SinkConfig.TIMESTAMP_SOURCE;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.TIMESTAMP_TIMEZONE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.amazonaws.regions.Regions;
+import com.google.common.collect.Maps;
+import io.aiven.kafka.connect.common.templating.Template;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import org.apache.kafka.common.config.ConfigException;
+
+import io.aiven.kafka.connect.s3.S3SinkConfig;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class S3SinkConfigTest {
 
@@ -657,13 +656,8 @@ class S3SinkConfigTest {
 
         final var expectedTimestamp = config.getTimestampSource().time();
 
-        final var renderedPrefix =
-            config.getPrefixTemplate()
-                .instance()
-                .bindVariable("timestamp", parameter ->
-                    FORMAT_TIMESTAMP.apply(config.getTimestampSource(), parameter))
-                .render();
-
+        final var renderedPrefix = Template.of(config.getAwsS3Prefix())
+            .render(config.getTimestampSource(), null, 0, 0, null);
         assertEquals(
             String.format(
                 "%s/%s/%s/",

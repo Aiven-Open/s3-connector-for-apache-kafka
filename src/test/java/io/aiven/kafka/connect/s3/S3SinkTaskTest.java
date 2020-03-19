@@ -16,6 +16,25 @@
 
 package io.aiven.kafka.connect.s3;
 
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_ENDPOINT;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_PREFIX;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_COMPRESSION;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_FIELDS;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import io.findify.s3mock.S3Mock;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -46,33 +65,13 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
-import io.findify.s3mock.S3Mock;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_ENDPOINT;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_PREFIX;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_COMPRESSION;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_FIELDS;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 public class S3SinkTaskTest {
-
     private static final String TEST_BUCKET = "test-bucket";
 
     private static S3Mock s3Api;

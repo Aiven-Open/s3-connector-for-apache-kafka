@@ -22,6 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,15 +36,11 @@ public final class TemplateParser {
     private static final Pattern PARAMETER_PATTERN =
         Pattern.compile("([\\w]+)?=?([\\w]+)?"); // foo=bar
 
-    private TemplateParser() {
-
-    }
-
-    public static Pair<List<Pair<String, VariableTemplatePart.Parameter>>, List<TemplatePart>> parse(
+    public static Pair<List<Pair<String, TemplateParameter>>, List<TemplatePart>> parse(
         final String template) {
         LOGGER.debug("Parse template: {}", template);
 
-        final ImmutableList.Builder<Pair<String, VariableTemplatePart.Parameter>> variablesAndParametersBuilder =
+        final ImmutableList.Builder<Pair<String, TemplateParameter>> variablesAndParametersBuilder =
             ImmutableList.builder();
         final ImmutableList.Builder<TemplatePart> templatePartsBuilder =
             ImmutableList.builder();
@@ -51,9 +48,7 @@ public final class TemplateParser {
 
         int position = 0;
         while (m.find()) {
-            templatePartsBuilder.add(
-                new TextTemplatePart(template.substring(position, m.start()))
-            );
+            templatePartsBuilder.add(new TemplatePart(template.substring(position, m.start())));
             final String variable = m.group(1);
             final String parameterDef = m.group(2);
             final String parameter = m.group(3);
@@ -71,17 +66,17 @@ public final class TemplateParser {
                 throw new IllegalArgumentException("Wrong variable with parameter definition");
             }
 
-            final VariableTemplatePart.Parameter p = parseParameter(variable, parameter);
+            final TemplateParameter p = parseParameter(variable, parameter);
             variablesAndParametersBuilder.add(Pair.of(variable, p));
-            templatePartsBuilder.add(new VariableTemplatePart(variable, p, m.group()));
+            templatePartsBuilder.add(new TemplatePart(variable, p, m.group()));
             position = m.end();
         }
-        templatePartsBuilder.add(new TextTemplatePart(template.substring(position)));
+        templatePartsBuilder.add(new TemplatePart(template.substring(position)));
 
         return Pair.of(variablesAndParametersBuilder.build(), templatePartsBuilder.build());
     }
 
-    private static VariableTemplatePart.Parameter parseParameter(final String variable, final String parameter) {
+    private static TemplateParameter parseParameter(final String variable, final String parameter) {
         LOGGER.debug("Parse {} parameter", parameter);
         if (Objects.nonNull(parameter)) {
             final Matcher m = PARAMETER_PATTERN.matcher(parameter);
@@ -114,9 +109,9 @@ public final class TemplateParser {
                 );
             }
 
-            return VariableTemplatePart.Parameter.of(name, value);
+            return TemplateParameter.of(name, value);
         } else {
-            return VariableTemplatePart.Parameter.EMPTY;
+            return TemplateParameter.EMPTY;
         }
     }
 

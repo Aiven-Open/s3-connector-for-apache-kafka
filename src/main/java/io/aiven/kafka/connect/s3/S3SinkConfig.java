@@ -39,7 +39,7 @@ import io.aiven.kafka.connect.common.config.OutputField;
 import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
 import io.aiven.kafka.connect.common.config.OutputFieldType;
 import io.aiven.kafka.connect.common.config.TimestampSource;
-import io.aiven.kafka.connect.common.config.validators.FileCompressionTypeValidator;
+import io.aiven.kafka.connect.common.config.validators.CompressionTypeValidator;
 import io.aiven.kafka.connect.common.config.validators.NonEmptyPassword;
 import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
 import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
@@ -229,7 +229,7 @@ public class S3SinkConfig extends AbstractConfig {
             FILE_COMPRESSION_TYPE_CONFIG,
             ConfigDef.Type.STRING,
             null,
-            new FileCompressionTypeValidator(),
+            new CompressionTypeValidator(),
             ConfigDef.Importance.MEDIUM,
             "The compression type used for files put on AWS. "
                 + "The supported values are: " + supportedCompressionTypes + ".",
@@ -444,7 +444,7 @@ public class S3SinkConfig extends AbstractConfig {
             OUTPUT_COMPRESSION,
             Type.STRING,
             null,
-            new FileCompressionTypeValidator() {
+            new CompressionTypeValidator() {
                 @Override
                 public void ensureValid(final String name, final Object value) {
                     LOGGER.info(OUTPUT_COMPRESSION
@@ -586,22 +586,7 @@ public class S3SinkConfig extends AbstractConfig {
     }
 
     public Template getPrefixTemplate() {
-        final var t = Template.of(getAwsS3Prefix());
-        t.instance()
-            .bindVariable(
-                "utc_date",
-                () -> {
-                    LOGGER.info("utc_date variable is deprecated please read documentation for the new name");
-                    return "";
-                })
-            .bindVariable(
-                "local_date",
-                () -> {
-                    LOGGER.info("local_date variable is deprecated please read documentation for the new name");
-                    return "";
-                })
-            .render();
-        return t;
+        return Template.of(getAwsS3Prefix());
     }
 
     public final ZoneId getTimezone() {

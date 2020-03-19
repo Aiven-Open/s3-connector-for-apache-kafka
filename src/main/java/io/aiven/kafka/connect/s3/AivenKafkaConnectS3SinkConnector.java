@@ -70,5 +70,4 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
     public void stop() {
         LOGGER.info("Stop S3 connector");
     }
-
 }

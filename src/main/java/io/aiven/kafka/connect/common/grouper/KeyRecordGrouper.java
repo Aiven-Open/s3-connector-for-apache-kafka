@@ -22,19 +22,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.sink.SinkRecord;
 
-import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
 import io.aiven.kafka.connect.common.templating.Template;
 
 public final class KeyRecordGrouper implements RecordGrouper {
 
     private final Template filenameTemplate;
 
-    // One record pre file, but use List here for the compatibility with the interface.
+    // One record per file, but use List here for the compatibility with the interface.
     private final Map<String, List<SinkRecord>> fileBuffers = new HashMap<>();
 
     /**
@@ -62,19 +60,15 @@ public final class KeyRecordGrouper implements RecordGrouper {
     }
 
     private String generateRecordKey(final SinkRecord record) {
-        final Supplier<String> setKey = () -> {
-            if (record.key() == null) {
-                return "null";
-            } else if (record.keySchema().type() == Schema.Type.STRING) {
-                return (String) record.key();
-            } else {
-                return record.key().toString();
-            }
-        };
-
-        return filenameTemplate.instance()
-            .bindVariable(FilenameTemplateVariable.KEY.name, setKey)
-            .render();
+        String recordKey = "";
+        if (record.key() == null) {
+            recordKey = "null";
+        } else if (record.keySchema().type() == Schema.Type.STRING) {
+            recordKey = (String) record.key();
+        } else {
+            recordKey = record.key().toString();
+        }
+        return filenameTemplate.render(null, "", 0, 0, recordKey);
     }
 
     @Override

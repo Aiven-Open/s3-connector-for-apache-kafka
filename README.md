@@ -2,7 +2,7 @@
 
 This is a sink Kafka Connect connector that stores Kafka messages in a AWS S3 bucket.
 
-## How to works
+## How it works
 
 The connector subscribes to the specified Kafka topics and collects messages coming in them and periodically dumps the collected data to the specified bucket in AWS S3.
 The connector needs the following permissions to the specified bucket:
@@ -83,6 +83,7 @@ List of new configuration parameters:
 - `timestamp.source` -  The source of timestamps. Supports only `wallclock` which is the default value.
 
 ##### Prefix Templating
+
 The parameter `aws_s3_prefix` or `aws.s3.prefix` supports templating using `{{ var }}` for variables that will be substituted with values.
 
 ```
@@ -203,6 +204,6 @@ timestamp.timezone=Europe/Berlin
 timestamp.source=wallclock
 ```
 
-# License
+## License
 
 This project is licensed under the [Apache License, Version 2.0](LICENSE).
