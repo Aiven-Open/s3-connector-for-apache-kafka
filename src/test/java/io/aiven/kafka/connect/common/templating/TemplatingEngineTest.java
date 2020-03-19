@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.aiven.kafka.connect.s3.templating;
+package io.aiven.kafka.connect.common.templating;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -25,9 +25,9 @@ import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TemplatingEngineTest {
     @Test
@@ -158,7 +158,7 @@ public class TemplatingEngineTest {
              final BufferedReader bufferedReader = new BufferedReader(reader)) {
 
             return bufferedReader.lines().filter(s -> !s.isEmpty() && !s.startsWith("#"))
-                    .collect(Collectors.toList());
+                .collect(Collectors.toList());
         }
     }
 }

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.aiven.kafka.connect.s3.templating;
+package io.aiven.kafka.connect.common.templating;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  * Non-bound variables are left as is.
  */
 public final class TemplatingEngine {
-    private static Pattern variablePattern = Pattern.compile("\\{\\{\\s*(\\w+)\\s*}}"); // {{ var }}
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*(\\w+)\\s*}}"); // {{ var }}
 
     private final Map<String, Supplier<String>> bindings = new HashMap<>();
 
@@ -38,22 +38,22 @@ public final class TemplatingEngine {
     }
 
     public final String render(final String template) {
-        final Matcher m = variablePattern.matcher(template);
+        final Matcher matcher = VARIABLE_PATTERN.matcher(template);
         final StringBuilder sb = new StringBuilder();
 
         int position = 0;
-        while (m.find()) {
-            sb.append(template, position, m.start());
+        while (matcher.find()) {
+            sb.append(template, position, matcher.start());
 
-            final String variableName = m.group(1);
+            final String variableName = matcher.group(1);
             final Supplier<String> supplier = bindings.get(variableName);
             // Substitute for bound variables, pass the variable pattern as is for non-bound.
             if (supplier != null) {
                 sb.append(supplier.get());
             } else {
-                sb.append(m.group());
+                sb.append(matcher.group());
             }
-            position = m.end();
+            position = matcher.end();
         }
         sb.append(template.substring(position));
 

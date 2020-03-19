@@ -55,16 +55,24 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import io.findify.s3mock.S3Mock;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_ENDPOINT;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_PREFIX;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_COMPRESSION;
+import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_FIELDS;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class AivenKafkaConnectS3SinkTaskTest {
+public class S3SinkTaskTest {
 
     private static final String TEST_BUCKET = "test-bucket";
 
@@ -77,7 +85,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
     private Map<String, String> properties;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpClass() {
         final Random generator = new Random();
         final int s3Port = generator.nextInt(10000) + 10000;
@@ -86,41 +94,41 @@ public class AivenKafkaConnectS3SinkTaskTest {
         s3Api.start();
 
         final Map<String, String> commonPropertiesMutable = new HashMap<>();
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID, "test_key_id");
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY, "test_secret_key");
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_S3_BUCKET, TEST_BUCKET);
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT, "http://localhost:" + s3Port);
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_S3_REGION, "us-west-2");
+        commonPropertiesMutable.put(AWS_ACCESS_KEY_ID, "test_key_id");
+        commonPropertiesMutable.put(AWS_SECRET_ACCESS_KEY, "test_secret_key");
+        commonPropertiesMutable.put(AWS_S3_BUCKET, TEST_BUCKET);
+        commonPropertiesMutable.put(AWS_S3_ENDPOINT, "http://localhost:" + s3Port);
+        commonPropertiesMutable.put(AWS_S3_REGION, "us-west-2");
         commonProperties = Collections.unmodifiableMap(commonPropertiesMutable);
 
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID),
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY)
+            commonProperties.get(AWS_ACCESS_KEY_ID),
+            commonProperties.get(AWS_SECRET_ACCESS_KEY)
         );
         builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
         builder.withEndpointConfiguration(new EndpointConfiguration(
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT),
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_S3_REGION)
+            commonProperties.get(AWS_S3_ENDPOINT),
+            commonProperties.get(AWS_S3_REGION)
         ));
         builder.withPathStyleAccessEnabled(true);
 
         s3Client = builder.build();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownClass() {
         s3Api.stop();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         properties = new HashMap<>(commonProperties);
 
         s3Client.createBucket(TEST_BUCKET);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         s3Client.deleteBucket(TEST_BUCKET);
     }
@@ -128,10 +136,11 @@ public class AivenKafkaConnectS3SinkTaskTest {
     @Test
     public void testAivenKafkaConnectS3SinkTaskTest() throws IOException {
         // Create SinkTask
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
+        properties.put(AWS_S3_PREFIX, "aiven--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -144,7 +153,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
         final Collection<SinkRecord> sinkRecords = createBatchOfRecord(0, 100);
         task.put(sinkRecords);
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz"));
 
         // Flush data - this is called by Connect on offset.flush.interval
         final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
@@ -153,9 +162,9 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
         final ConnectHeaders extectedConnectHeaders = createTestHeaders();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz"));
 
-        final S3Object s3Object = s3Client.getObject(TEST_BUCKET, "test-topic-0-0000000000.gz");
+        final S3Object s3Object = s3Client.getObject(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz");
         final S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
         try (final BufferedReader br =
                      new BufferedReader(
@@ -171,29 +180,29 @@ public class AivenKafkaConnectS3SinkTaskTest {
         // * Verify that we store data on partition unassignment
         task.put(createBatchOfRecord(100, 200));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000100.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000100.gz"));
 
         task.close(tps);
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000100.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000100.gz"));
 
         // * Verify that we store data on SinkTask shutdown
         task.put(createBatchOfRecord(200, 300));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000200.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000200.gz"));
 
         task.stop();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000200.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000200.gz"));
     }
 
     @Test
     public void testS3ConstantPrefix() {
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
-        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix--");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AWS_S3_PREFIX, "prefix--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -206,16 +215,21 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "prefix--test-topic-0-0000000000.gz"));
+        assertTrue(
+            s3Client.doesObjectExist(
+                TEST_BUCKET,
+                "prefix--test-topic-0-00000000000000000000.gz"
+            )
+        );
     }
 
     @Test
     public void testS3UtcDatePrefix() {
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
-        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix-{{ utc_date }}--");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AWS_S3_PREFIX, "prefix-{{ utc_date }}--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -228,8 +242,8 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        final String expectedFileName = String.format("prefix-%s--test-topic-0-0000000000.gz",
-                ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE));
+        final String expectedFileName = String.format("prefix-%s--test-topic-0-00000000000000000000.gz",
+            ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE));
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
         task.stop();
@@ -237,11 +251,11 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
     @Test
     public void testS3LocalDatePrefix() {
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
-        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix-{{ local_date }}--");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AWS_S3_PREFIX, "prefix-{{ local_date }}--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -254,8 +268,11 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        final String expectedFileName = String.format("prefix-%s--test-topic-0-0000000000.gz",
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE));
+        final String expectedFileName =
+            String.format(
+                "prefix-%s--test-topic-0-00000000000000000000.gz",
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            );
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
         task.stop();
@@ -266,14 +283,14 @@ public class AivenKafkaConnectS3SinkTaskTest {
         for (int offset = offsetFrom; offset < offsetTo; offset++) {
             final ConnectHeaders connectHeaders = createTestHeaders();
             final SinkRecord record = new SinkRecord(
-                    "test-topic",
-                    0,
-                    Schema.BYTES_SCHEMA, "test-key".getBytes(),
-                    Schema.BYTES_SCHEMA, "test-value".getBytes(),
-                    offset,
-                    1000L,
-                    TimestampType.CREATE_TIME,
-                    connectHeaders
+                "test-topic",
+                0,
+                Schema.BYTES_SCHEMA, "test-key".getBytes(),
+                Schema.BYTES_SCHEMA, "test-value".getBytes(),
+                offset,
+                1000L,
+                TimestampType.CREATE_TIME,
+                connectHeaders
             );
             records.add(record);
 

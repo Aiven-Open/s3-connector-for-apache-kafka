@@ -18,74 +18,58 @@
 package io.aiven.kafka.connect.s3;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.errors.ConnectException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AivenKafkaConnectS3SinkConnector extends Connector {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
 
     private Map<String, String> configProperties;
 
     @Override
+    public ConfigDef config() {
+        return S3SinkConfig.configDef();
+    }
+
+    @Override
     public String version() {
-        return AppInfoParser.getVersion();
+        return Version.VERSION;
     }
 
     @Override
     public Class<? extends Task> taskClass() {
-        return AivenKafkaConnectS3SinkTask.class;
-    }
-
-    @Override
-    public void start(final Map<String, String> properties) {
-        final String[] mandatoryKeys = new String[] {
-            AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID,
-            AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY,
-            AivenKafkaConnectS3Constants.AWS_S3_BUCKET
-        };
-        for (final String pk: mandatoryKeys) {
-            if (properties.get(pk) == null) {
-                throw new ConnectException("Mandatory parameter '" + pk + "' is missing.");
-            }
-        }
-        final String fieldConfig = properties.get(AivenKafkaConnectS3Constants.OUTPUT_FIELDS);
-        if (fieldConfig != null) {
-            final String[] fieldNames = fieldConfig.split("\\s*,\\s*");
-            for (int i = 0; i < fieldNames.length; i++) {
-                //FIXME simplify if/else statements
-                if (AivenKafkaConnectS3Constants.OUTPUT_FILED_NAMES.contains(fieldNames[i].toLowerCase())) {
-                    // pass
-                } else {
-                    throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");
-                }
-            }
-        }
-        configProperties = properties;
-    }
-
-    @Override
-    public void stop() {
+        return S3SinkTask.class;
     }
 
     @Override
     public List<Map<String, String>> taskConfigs(final int maxTasks) {
-        final List<Map<String, String>> taskConfigs = new ArrayList<>();
-        final Map<String, String> taskProperties = new HashMap<>();
-        taskProperties.putAll(configProperties);
+        final var taskProps = new ArrayList<Map<String, String>>();
         for (int i = 0; i < maxTasks; i++) {
-            taskConfigs.add(taskProperties);
+            final var props = Map.copyOf(configProperties);
+            taskProps.add(props);
         }
-        return taskConfigs;
+        return taskProps;
     }
 
     @Override
-    public ConfigDef config() {
-        return AivenKafkaConnectS3Config.newConfigDef();
+    public void start(final Map<String, String> properties) {
+        Objects.requireNonNull(properties, "properties haven't been set");
+        configProperties = Map.copyOf(properties);
+        LOGGER.info("Stop S3 connector");
     }
+
+    @Override
+    public void stop() {
+        LOGGER.info("Stop S3 connector");
+    }
+
 }

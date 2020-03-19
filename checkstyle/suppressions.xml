@@ -19,5 +19,8 @@
     <suppress checks="(JavaNCSS)"
               files="(AivenKafkaConnectS3SinkTask).java"/>
 
+    <suppress checks="(ClassFanOutComplexity)"
+              files="(S3SinkConfig|S3SinkTaskTest).java"/>
+
 
 </suppressions>

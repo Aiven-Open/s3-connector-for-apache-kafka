@@ -29,44 +29,44 @@ import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
 
-public class AivenKafkaConnectS3MultipartUpload {
+public class S3MultipartUpload {
 
-    private AmazonS3 s3;
-    private String bucketName;
-    private String keyName;
-    private String uploadId;
-    private List<PartETag> partETags;
+    private final AmazonS3 s3Client;
+
+    private final String bucketName;
+
+    private final String keyName;
+
+    private final String uploadId;
+
+    private final List<PartETag> partETags;
+
     private int partIndex;
 
-    public AivenKafkaConnectS3MultipartUpload(
-        final AmazonS3 s3,
-        final String bucketName,
-        final String keyName) {
-
-        this.s3 = s3;
+    public S3MultipartUpload(final AmazonS3 s3Client, final String bucketName, final String keyName) {
+        this.s3Client = s3Client;
         this.bucketName = bucketName;
         this.keyName = keyName;
         this.partETags = new ArrayList<>();
         this.partIndex = 1;
 
         final InitiateMultipartUploadRequest initRequest = new InitiateMultipartUploadRequest(bucketName, keyName);
-        final InitiateMultipartUploadResult initResponse = s3.initiateMultipartUpload(initRequest);
+        final InitiateMultipartUploadResult initResponse = s3Client.initiateMultipartUpload(initRequest);
         this.uploadId = initResponse.getUploadId();
     }
 
-    public void uploadPart(final InputStream data,
-                           final int len) {
-        final UploadPartRequest uploadRequest = new UploadPartRequest()
-            .withBucketName(this.bucketName)
-            .withKey(this.keyName)
-            .withUploadId(this.uploadId)
-            .withPartNumber(this.partIndex)
-            .withInputStream(data)
-            .withPartSize(len);
+    public void uploadPart(final InputStream data, final int len) {
+        final UploadPartRequest uploadRequest =
+            new UploadPartRequest()
+                .withBucketName(this.bucketName)
+                .withKey(this.keyName)
+                .withUploadId(this.uploadId)
+                .withPartNumber(this.partIndex)
+                .withInputStream(data)
+                .withPartSize(len);
 
         this.partIndex += 1;
-
-        this.partETags.add(this.s3.uploadPart(uploadRequest).getPartETag());
+        this.partETags.add(this.s3Client.uploadPart(uploadRequest).getPartETag());
     }
 
     public void commit() {
@@ -77,7 +77,7 @@ public class AivenKafkaConnectS3MultipartUpload {
             this.partETags
         );
 
-        this.s3.completeMultipartUpload(completeRequest);
+        this.s3Client.completeMultipartUpload(completeRequest);
     }
 
     public void abort() {
@@ -87,6 +87,6 @@ public class AivenKafkaConnectS3MultipartUpload {
             this.uploadId
         );
 
-        this.s3.abortMultipartUpload(abortRequest);
+        this.s3Client.abortMultipartUpload(abortRequest);
     }
 }

@@ -17,6 +17,9 @@
 
 package io.aiven.kafka.connect.s3;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Random;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -24,16 +27,18 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import io.findify.s3mock.S3Mock;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class AivenKafkaConnectS3OutputStreamTest {
+public class S3MultipartUploadTest {
 
     @Test
-    public void testAivenKafkaConnectS3OutputStreamTest() {
+    public void testAivenKafkaConnectS3MultipartUploadTest() throws IOException {
         final Random generator = new Random();
         final int port = generator.nextInt(10000) + 10000;
 
@@ -53,26 +58,24 @@ public class AivenKafkaConnectS3OutputStreamTest {
         final AmazonS3 s3Client = builder.build();
         s3Client.createBucket("test-bucket");
 
-        final AivenKafkaConnectS3OutputStream storageSmall =
-            new AivenKafkaConnectS3OutputStream(s3Client, "test-bucket", "test-key-small");
+        final S3MultipartUpload mp = new S3MultipartUpload(
+            s3Client,
+            "test-bucket",
+            "test-object"
+        );
 
-        final byte[] inputSmall = "small".getBytes();
-        storageSmall.write(inputSmall);
-        assertFalse(s3Client.doesObjectExist("test-bucket", "test-key-small"));
-        storageSmall.flush();
-        assertFalse(s3Client.doesObjectExist("test-bucket", "test-key-small"));
-        storageSmall.close();
-        assertTrue(s3Client.doesObjectExist("test-bucket", "test-key-small"));
+        final byte[] data = "foobar".getBytes();
+        final InputStream stream = new ByteArrayInputStream(data, 0, data.length);
+        mp.uploadPart(stream, data.length);
+        mp.commit();
 
-        final AivenKafkaConnectS3OutputStream storageLarge =
-            new AivenKafkaConnectS3OutputStream(s3Client, "test-bucket", "test-key-large");
-        final byte[] inputLarge = new byte[1024 * 1024 * 10];
-        storageLarge.write(inputLarge);
-        assertFalse(s3Client.doesObjectExist("test-bucket", "test-key-large"));
-        storageLarge.flush();
-        assertFalse(s3Client.doesObjectExist("test-bucket", "test-key-large"));
-        storageLarge.close();
-        assertTrue(s3Client.doesObjectExist("test-bucket", "test-key-large"));
+        final S3Object object = s3Client.getObject(new GetObjectRequest("test-bucket", "test-object"));
+        final InputStream objectData = object.getObjectContent();
+        assertEquals(objectData.available(), 6);
+        final byte[] storedData = new byte[data.length];
+        objectData.read(storedData, 0, data.length);
+        assertArrayEquals(data, storedData);
+        objectData.close();
 
         api.stop();
     }
