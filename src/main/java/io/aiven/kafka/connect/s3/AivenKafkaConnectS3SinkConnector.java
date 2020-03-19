@@ -28,6 +28,8 @@ import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.aiven.kafka.connect.commons.config.S3SinkConfig;
+
 public class AivenKafkaConnectS3SinkConnector extends Connector {
 
     private Map<String, String> configProperties;
@@ -45,21 +47,21 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
     @Override
     public void start(final Map<String, String> properties) {
         final String[] mandatoryKeys = new String[] {
-            AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID,
-            AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY,
-            AivenKafkaConnectS3Constants.AWS_S3_BUCKET
+            S3SinkConfig.AWS_ACCESS_KEY_ID,
+            S3SinkConfig.AWS_SECRET_ACCESS_KEY,
+            S3SinkConfig.AWS_S3_BUCKET
         };
         for (final String pk: mandatoryKeys) {
             if (properties.get(pk) == null) {
                 throw new ConnectException("Mandatory parameter '" + pk + "' is missing.");
             }
         }
-        final String fieldConfig = properties.get(AivenKafkaConnectS3Constants.OUTPUT_FIELDS);
+        final String fieldConfig = properties.get(S3SinkConfig.OUTPUT_FIELDS);
         if (fieldConfig != null) {
             final String[] fieldNames = fieldConfig.split("\\s*,\\s*");
             for (int i = 0; i < fieldNames.length; i++) {
                 //FIXME simplify if/else statements
-                if (AivenKafkaConnectS3Constants.OUTPUT_FILED_NAMES.contains(fieldNames[i].toLowerCase())) {
+                if (S3SinkConfig.OUTPUT_FILED_NAMES.contains(fieldNames[i].toLowerCase())) {
                     // pass
                 } else {
                     throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");
@@ -86,6 +88,6 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
 
     @Override
     public ConfigDef config() {
-        return AivenKafkaConnectS3Config.newConfigDef();
+        return S3SinkConfig.configDef();
     }
 }

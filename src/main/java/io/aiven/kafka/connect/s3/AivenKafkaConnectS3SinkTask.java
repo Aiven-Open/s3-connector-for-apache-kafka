@@ -29,6 +29,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
+import io.aiven.kafka.connect.commons.config.CompressionType;
+import io.aiven.kafka.connect.commons.config.OutputFieldType;
+import io.aiven.kafka.connect.commons.config.S3SinkConfig;
+import io.aiven.kafka.connect.s3.templating.TemplatingEngine;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
@@ -38,8 +42,6 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.storage.Converter;
-
-import io.aiven.kafka.connect.s3.templating.TemplatingEngine;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -58,7 +60,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     private Map<String, String> taskConfig;
 
-    private Base64.Encoder b64Encoder = Base64.getEncoder();
+    private final Base64.Encoder b64Encoder = Base64.getEncoder();
     private Converter keyConverter;
     private Converter valueConverter;
 
@@ -66,20 +68,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     private Map<TopicPartition, OutputStream> outputStreams = new HashMap<>();
 
-    private enum OutputFieldType {
-        KEY,
-        OFFSET,
-        TIMESTAMP,
-        VALUE,
-        HEADERS
-    }
-
     OutputFieldType[] outputFields;
-
-    private enum CompressionType {
-        GZIP,
-        NONE
-    }
 
     CompressionType outputCompression = CompressionType.GZIP;
 
@@ -111,17 +100,17 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
 
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-            props.get(AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID),
-            props.get(AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY)
+            props.get(S3SinkConfig.AWS_ACCESS_KEY_ID),
+            props.get(S3SinkConfig.AWS_SECRET_ACCESS_KEY)
         );
         builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
 
-        String region = props.get(AivenKafkaConnectS3Constants.AWS_S3_REGION);
+        String region = props.get(S3SinkConfig.AWS_S3_REGION);
         if (region == null || region.equals("")) {
             region = Regions.US_EAST_1.getName();
         }
 
-        final String endpointUrl = props.get(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT);
+        final String endpointUrl = props.get(S3SinkConfig.AWS_S3_ENDPOINT);
 
         if (endpointUrl == null || endpointUrl.equals("")) {
             builder.withRegion(Regions.fromName(region));
@@ -135,34 +124,34 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         this.keyConverter = new ByteArrayConverter();
         this.valueConverter = new ByteArrayConverter();
 
-        String fieldConfig = props.get(AivenKafkaConnectS3Constants.OUTPUT_FIELDS);
+        String fieldConfig = props.get(S3SinkConfig.OUTPUT_FIELDS);
         if (fieldConfig == null) {
-            fieldConfig = AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE;
+            fieldConfig = S3SinkConfig.OUTPUT_FIELD_NAME_VALUE;
         }
         final String[] fieldNames = fieldConfig.split("\\s*,\\s*");
         this.outputFields = new OutputFieldType[fieldNames.length];
         for (int i = 0; i < fieldNames.length; i++) {
-            if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY)) {
+            if (fieldNames[i].equalsIgnoreCase(S3SinkConfig.OUTPUT_FIELD_NAME_KEY)) {
                 this.outputFields[i] = OutputFieldType.KEY;
-            } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET)) {
+            } else if (fieldNames[i].equalsIgnoreCase(S3SinkConfig.OUTPUT_FIELD_NAME_OFFSET)) {
                 this.outputFields[i] = OutputFieldType.OFFSET;
-            } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP)) {
+            } else if (fieldNames[i].equalsIgnoreCase(S3SinkConfig.OUTPUT_FIELD_NAME_TIMESTAMP)) {
                 this.outputFields[i] = OutputFieldType.TIMESTAMP;
-            } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE)) {
+            } else if (fieldNames[i].equalsIgnoreCase(S3SinkConfig.OUTPUT_FIELD_NAME_VALUE)) {
                 this.outputFields[i] = OutputFieldType.VALUE;
-            } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_HEADERS)) {
+            } else if (fieldNames[i].equalsIgnoreCase(S3SinkConfig.OUTPUT_FIELD_NAME_HEADERS)) {
                 this.outputFields[i] = OutputFieldType.HEADERS;
             } else {
                 throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");
             }
         }
 
-        final String compression = props.get(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION);
+        final String compression = props.get(S3SinkConfig.OUTPUT_COMPRESSION);
         if (compression != null) {
             //FIXME simplify if/else statements
-            if (compression.equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_GZIP)) {
+            if (compression.equalsIgnoreCase(S3SinkConfig.OUTPUT_COMPRESSION_TYPE_GZIP)) {
                 // default
-            } else if (compression.equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION_TYPE_NONE)) {
+            } else if (compression.equalsIgnoreCase(S3SinkConfig.OUTPUT_COMPRESSION_TYPE_NONE)) {
                 this.outputCompression = CompressionType.NONE;
             } else {
                 throw new ConnectException("Unknown output compression type '" + compression + "'.");
@@ -230,7 +219,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                 stream =
                     new AivenKafkaConnectS3OutputStream(
                         this.s3Client,
-                        this.taskConfig.get(AivenKafkaConnectS3Constants.AWS_S3_BUCKET),
+                        this.taskConfig.get(S3SinkConfig.AWS_S3_BUCKET),
                         keyName
                     );
                 if (this.outputCompression == CompressionType.GZIP) {
@@ -322,7 +311,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     }
 
     private String getS3Prefix() {
-        final String prefixTemplate = this.taskConfig.get(AivenKafkaConnectS3Constants.AWS_S3_PREFIX);
+        final String prefixTemplate = this.taskConfig.get(S3SinkConfig.AWS_S3_PREFIX);
         if (prefixTemplate == null) {
             return "";
         }

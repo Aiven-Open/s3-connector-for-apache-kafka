@@ -52,6 +52,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static io.aiven.kafka.connect.commons.config.S3SinkConfig.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -77,22 +78,22 @@ public class AivenKafkaConnectS3SinkTaskTest {
         s3Api.start();
 
         final Map<String, String> commonPropertiesMutable = new HashMap<>();
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID, "test_key_id");
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY, "test_secret_key");
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_S3_BUCKET, TEST_BUCKET);
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT, "http://localhost:" + s3Port);
-        commonPropertiesMutable.put(AivenKafkaConnectS3Constants.AWS_S3_REGION, "us-west-2");
+        commonPropertiesMutable.put(AWS_ACCESS_KEY_ID, "test_key_id");
+        commonPropertiesMutable.put(AWS_SECRET_ACCESS_KEY, "test_secret_key");
+        commonPropertiesMutable.put(AWS_S3_BUCKET, TEST_BUCKET);
+        commonPropertiesMutable.put(AWS_S3_ENDPOINT, "http://localhost:" + s3Port);
+        commonPropertiesMutable.put(AWS_S3_REGION, "us-west-2");
         commonProperties = Collections.unmodifiableMap(commonPropertiesMutable);
 
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_ACCESS_KEY_ID),
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_SECRET_ACCESS_KEY)
+                commonProperties.get(AWS_ACCESS_KEY_ID),
+                commonProperties.get(AWS_SECRET_ACCESS_KEY)
         );
         builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
         builder.withEndpointConfiguration(new EndpointConfiguration(
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_S3_ENDPOINT),
-                commonProperties.get(AivenKafkaConnectS3Constants.AWS_S3_REGION)
+                commonProperties.get(AWS_S3_ENDPOINT),
+                commonProperties.get(AWS_S3_REGION)
         ));
         builder.withPathStyleAccessEnabled(true);
 
@@ -121,8 +122,8 @@ public class AivenKafkaConnectS3SinkTaskTest {
         // Create SinkTask
         final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -179,9 +180,9 @@ public class AivenKafkaConnectS3SinkTaskTest {
     public void testS3ConstantPrefix() {
         final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
-        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix--");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AWS_S3_PREFIX, "prefix--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -201,9 +202,9 @@ public class AivenKafkaConnectS3SinkTaskTest {
     public void testS3UtcDatePrefix() {
         final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
-        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix-{{ utc_date }}--");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AWS_S3_PREFIX, "prefix-{{ utc_date }}--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -227,9 +228,9 @@ public class AivenKafkaConnectS3SinkTaskTest {
     public void testS3LocalDatePrefix() {
         final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
 
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
-        properties.put(AivenKafkaConnectS3Constants.AWS_S3_PREFIX, "prefix-{{ local_date }}--");
+        properties.put(OUTPUT_COMPRESSION, "gzip");
+        properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AWS_S3_PREFIX, "prefix-{{ local_date }}--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
