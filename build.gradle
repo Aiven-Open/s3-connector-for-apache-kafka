@@ -38,12 +38,13 @@ group = "io.aiven"
 version = hasProperty("module_version") ? "$project.module_version" : 'unknown'
 
 repositories {
+    mavenLocal()
     jcenter()
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 checkstyle {
@@ -59,6 +60,7 @@ ext {
     kafkaVersion = "1.1.0"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
+    aivenConnectCommonsVersion = "0.7"
 }
 
 distributions {
@@ -116,9 +118,15 @@ processResources {
     }
 }
 
+test {
+    useJUnitPlatform()
+}
+
 dependencies {
     compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
     compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
+
+    implementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
 
     implementation "org.slf4j:slf4j-api:$slf4jVersion"
     implementation "com.amazonaws:aws-java-sdk-s3:$amazonS3Version"
@@ -132,6 +140,9 @@ dependencies {
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
     testImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
     testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
-    testImplementation 'junit:junit:4.12'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.0'
+
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
 }

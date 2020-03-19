@@ -46,14 +46,14 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import io.findify.s3mock.S3Mock;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AivenKafkaConnectS3SinkTaskTest {
 
@@ -68,7 +68,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
     private Map<String, String> properties;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpClass() {
         final Random generator = new Random();
         final int s3Port = generator.nextInt(10000) + 10000;
@@ -99,19 +99,19 @@ public class AivenKafkaConnectS3SinkTaskTest {
         s3Client = builder.build();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownClass() {
         s3Api.stop();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         properties = new HashMap<>(commonProperties);
 
         s3Client.createBucket(TEST_BUCKET);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         s3Client.deleteBucket(TEST_BUCKET);
     }
