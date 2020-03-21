@@ -32,7 +32,7 @@ import java.util.zip.GZIPOutputStream;
 import io.aiven.kafka.connect.commons.config.CompressionType;
 import io.aiven.kafka.connect.commons.config.OutputFieldType;
 import io.aiven.kafka.connect.commons.config.S3SinkConfig;
-import io.aiven.kafka.connect.s3.templating.TemplatingEngine;
+import io.aiven.kafka.connect.commons.templating.TemplatingEngine;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.converters.ByteArrayConverter;

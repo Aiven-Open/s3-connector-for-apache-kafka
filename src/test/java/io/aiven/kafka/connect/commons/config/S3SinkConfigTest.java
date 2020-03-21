@@ -17,6 +17,7 @@
 
 package io.aiven.kafka.connect.commons.config;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -613,5 +614,40 @@ class S3SinkConfigTest {
             t.getMessage());
     }
 
+//    @Test
+//    void shouldBuildPrefixTemplate() {
+//
+//        final var prefix = "{{timestamp:unit=YYYY}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/";
+//
+//        final Map<String, String> props = new HashMap<>();
+//        props.put(AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
+//        props.put(AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
+//        props.put(AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah");
+//        props.put(AWS_S3_REGION_CONFIG, Regions.US_WEST_1.getName());
+//        props.put(FORMAT_OUTPUT_FIELDS_CONFIG, "key,value,offset,timestamp");
+//        props.put(TIMESTAMP_TIMEZONE, "Europe/Berlin");
+//        props.put(TIMESTAMP_SOURCE, "wallclock");
+//        props.put(AWS_S3_PREFIX_CONFIG, prefix);
+//
+//        final var c = new S3SinkConfig(props);
+//
+//        final var expectedTimestamp = c.getTimestampSource().time();
+//
+//        final var renderedPrefix =
+//            c.getPrefixTemplate()
+//                .instance()
+//                .bindVariable("timestamp", parameter -> formatTimestamp.apply(c.getTimestampSource(), parameter))
+//                .render();
+//
+//        assertEquals(
+//            String.format(
+//                "%s/%s/%s/",
+//                expectedTimestamp.format(DateTimeFormatter.ofPattern("YYYY")),
+//                expectedTimestamp.format(DateTimeFormatter.ofPattern("MM")),
+//                expectedTimestamp.format(DateTimeFormatter.ofPattern("dd"))
+//            ),
+//            renderedPrefix
+//        );
+//    }
 
 }

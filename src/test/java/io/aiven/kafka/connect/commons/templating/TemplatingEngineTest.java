@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.aiven.kafka.connect.s3.templating;
+package io.aiven.kafka.connect.commons.templating;
 
 import java.io.BufferedReader;
 import java.io.IOException;

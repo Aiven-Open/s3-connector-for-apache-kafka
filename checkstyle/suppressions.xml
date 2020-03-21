@@ -14,6 +14,6 @@
               files="(AivenKafkaConnectS3SinkTask).java"/>
 
     <suppress checks="(ClassFanOutComplexity)"
-              files="(AivenKafkaConnectS3SinkTask).java"/>
+              files="(AivenKafkaConnectS3SinkTask|S3SyncConfig).java"/>
 
 </suppressions>
