@@ -56,7 +56,7 @@ import static io.aiven.kafka.connect.commons.config.S3SinkConfig.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class AivenKafkaConnectS3SinkTaskTest {
+public class S3SinkTaskTest {
 
     private static final String TEST_BUCKET = "test-bucket";
 
@@ -120,7 +120,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
     @Test
     public void testAivenKafkaConnectS3SinkTaskTest() throws IOException {
         // Create SinkTask
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
         properties.put(OUTPUT_COMPRESSION, "gzip");
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
@@ -164,21 +164,21 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
         task.close(tps);
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000100.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-00000000000000000100.gz"));
 
         // * Verify that we store data on SinkTask shutdown
         task.put(createBatchOfRecord(200, 300));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000200.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-00000000000000000200.gz"));
 
         task.stop();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000200.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-00000000000000000200.gz"));
     }
 
     @Test
     public void testS3ConstantPrefix() {
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
         properties.put(OUTPUT_COMPRESSION, "gzip");
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
@@ -195,12 +195,17 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "prefix--test-topic-0-0000000000.gz"));
+        assertTrue(
+            s3Client.doesObjectExist(
+                TEST_BUCKET,
+                "prefix--test-topic-0-00000000000000000000.gz"
+            )
+        );
     }
 
     @Test
     public void testS3UtcDatePrefix() {
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
         properties.put(OUTPUT_COMPRESSION, "gzip");
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
@@ -217,7 +222,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        final String expectedFileName = String.format("prefix-%s--test-topic-0-0000000000.gz",
+        final String expectedFileName = String.format("prefix-%s--test-topic-0-00000000000000000000.gz",
                 ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE));
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
@@ -226,7 +231,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
 
     @Test
     public void testS3LocalDatePrefix() {
-        final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
+        final S3SinkTask task = new S3SinkTask();
 
         properties.put(OUTPUT_COMPRESSION, "gzip");
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
@@ -243,8 +248,11 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        final String expectedFileName = String.format("prefix-%s--test-topic-0-0000000000.gz",
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE));
+        final String expectedFileName =
+            String.format(
+                "prefix-%s--test-topic-0-00000000000000000000.gz",
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            );
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
         task.stop();

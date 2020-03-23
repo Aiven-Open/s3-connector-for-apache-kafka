@@ -83,6 +83,8 @@ public class S3SinkConfig extends AbstractConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
 
+    public static final String VERSION_FILE = "aiven-kafka-connect-s3-version.properties";
+
     //FIXME since we support so far both old style and new style of property names
     //      Importance was set to medium,
     //      as soon we will migrate to new values it must be set to HIGH
