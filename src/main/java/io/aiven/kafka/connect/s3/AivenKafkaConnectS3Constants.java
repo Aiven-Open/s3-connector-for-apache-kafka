@@ -17,6 +17,9 @@
 
 package io.aiven.kafka.connect.s3;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class AivenKafkaConnectS3Constants {
     public static final String AWS_ACCESS_KEY_ID = "aws_access_key_id";
     public static final String AWS_S3_BUCKET = "aws_s3_bucket";
@@ -34,4 +37,15 @@ public class AivenKafkaConnectS3Constants {
     public static final String OUTPUT_FIELD_NAME_OFFSET = "offset";
     public static final String OUTPUT_FIELD_NAME_TIMESTAMP = "timestamp";
     public static final String OUTPUT_FIELD_NAME_VALUE = "value";
+    public static final String OUTPUT_FIELD_NAME_HEADERS = "headers";
+
+    public static final Set<String> OUTPUT_FILED_NAMES = new HashSet<String>() {
+        {
+            add(OUTPUT_FIELD_NAME_KEY);
+            add(OUTPUT_FIELD_NAME_OFFSET);
+            add(OUTPUT_FIELD_NAME_TIMESTAMP);
+            add(OUTPUT_FIELD_NAME_VALUE);
+            add(OUTPUT_FIELD_NAME_HEADERS);
+        }
+    };
 }

@@ -17,20 +17,27 @@
 
 package io.aiven.kafka.connect.s3;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
 
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
+import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -56,6 +63,8 @@ public class AivenKafkaConnectS3SinkTaskTest {
     private static AmazonS3 s3Client;
 
     private static Map<String, String> commonProperties;
+
+    private final ByteArrayConverter byteArrayConverter = new ByteArrayConverter();
 
     private Map<String, String> properties;
 
@@ -108,12 +117,12 @@ public class AivenKafkaConnectS3SinkTaskTest {
     }
 
     @Test
-    public void testAivenKafkaConnectS3SinkTaskTest() {
+    public void testAivenKafkaConnectS3SinkTaskTest() throws IOException {
         // Create SinkTask
         final AivenKafkaConnectS3SinkTask task = new AivenKafkaConnectS3SinkTask();
 
         properties.put(AivenKafkaConnectS3Constants.OUTPUT_COMPRESSION, "gzip");
-        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset");
+        properties.put(AivenKafkaConnectS3Constants.OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -123,7 +132,8 @@ public class AivenKafkaConnectS3SinkTaskTest {
         // * Simulate periodical flush() cycle - ensure that data files are written
 
         // Push batch of records
-        task.put(createBatchOfRecord(0, 100));
+        Collection<SinkRecord> sinkRecords = createBatchOfRecord(0, 100);
+        task.put(sinkRecords);
 
         assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
 
@@ -132,7 +142,19 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
+        ConnectHeaders extectedConnectHeaders = createTestHeaders();
+
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
+
+        S3Object s3Object = s3Client.getObject(TEST_BUCKET, "test-topic-0-0000000000.gz");
+        S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3ObjectInputStream)))) {
+            for (String line; (line = br.readLine()) != null;) {
+                String[] parts = line.split(",");
+                ConnectHeaders actualConnectHeaders = readHeaders(parts[4]);
+                assertTrue(headersEquals(actualConnectHeaders, extectedConnectHeaders));
+            }
+        }
 
         // * Verify that we store data on partition unassignment
         task.put(createBatchOfRecord(100, 200));
@@ -230,15 +252,65 @@ public class AivenKafkaConnectS3SinkTaskTest {
     private Collection<SinkRecord> createBatchOfRecord(final int offsetFrom, final int offsetTo) {
         final ArrayList<SinkRecord> records = new ArrayList<>();
         for (int offset = offsetFrom; offset < offsetTo; offset++) {
+            ConnectHeaders connectHeaders = createTestHeaders();
             final SinkRecord record = new SinkRecord(
                     "test-topic",
                     0,
                     Schema.BYTES_SCHEMA, "test-key".getBytes(),
                     Schema.BYTES_SCHEMA, "test-value".getBytes(),
-                    offset
+                    offset,
+                    1000L,
+                    TimestampType.CREATE_TIME,
+                    connectHeaders
             );
             records.add(record);
+
         }
         return records;
+    }
+
+    private ConnectHeaders createTestHeaders() {
+        ConnectHeaders connectHeaders = new ConnectHeaders();
+        connectHeaders.addBytes("test-header-key-1", "test-header-value-1".getBytes(StandardCharsets.UTF_8));
+        connectHeaders.addBytes("test-header-key-2", "test-header-value-2".getBytes(StandardCharsets.UTF_8));
+        return connectHeaders;
+    }
+
+    private ConnectHeaders readHeaders(String s) {
+        final ConnectHeaders connectHeaders = new ConnectHeaders();
+        final String[] headers = s.split(";");
+        for (final String header : headers) {
+            final String[] keyValue = header.split(":");
+            final String key = new String(Base64.getDecoder().decode(keyValue[0]), StandardCharsets.UTF_8);
+            final byte[] value = Base64.getDecoder().decode(keyValue[1]);
+            final SchemaAndValue schemaAndValue = byteArrayConverter.toConnectHeader("topic0", key, value);
+            connectHeaders.add(key, schemaAndValue);
+        }
+        return connectHeaders;
+    }
+
+    private boolean headersEquals(final Iterable<Header> h1, final Iterable<Header> h2) {
+        final Iterator<Header> h1Iterator = h1.iterator();
+        final Iterator<Header> h2Iterator = h2.iterator();
+        while (h1Iterator.hasNext() && h2Iterator.hasNext()) {
+            final Header header1 = h1Iterator.next();
+            final Header header2 = h2Iterator.next();
+            if (!Objects.equals(header1.key(), header2.key())) {
+                return false;
+            }
+            if (!Objects.equals(header1.schema().type(), header2.schema().type())) {
+                return false;
+            }
+            if (header1.schema().type() != Schema.Type.BYTES) {
+                return false;
+            }
+            if (header2.schema().type() != Schema.Type.BYTES) {
+                return false;
+            }
+            if (!Arrays.equals((byte[]) header1.value(), (byte[]) header2.value())) {
+                return false;
+            }
+        }
+        return !h1Iterator.hasNext() && !h2Iterator.hasNext();
     }
 }

@@ -89,7 +89,8 @@ public class AivenKafkaConnectS3Config {
                 + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY + ", "
                 + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET + ", "
                 + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP + ", "
-                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE
+                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE + ", "
+                + AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_HEADERS
         );
 
         return configDef;

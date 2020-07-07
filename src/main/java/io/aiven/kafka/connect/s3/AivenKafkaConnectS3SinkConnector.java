@@ -59,10 +59,7 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
             final String[] fieldNames = fieldConfig.split("\\s*,\\s*");
             for (int i = 0; i < fieldNames.length; i++) {
                 //FIXME simplify if/else statements
-                if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_KEY)
-                    || fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_OFFSET)
-                    || fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_TIMESTAMP)
-                    || fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE)) {
+                if (AivenKafkaConnectS3Constants.OUTPUT_FILED_NAMES.contains(fieldNames[i].toLowerCase())) {
                     // pass
                 } else {
                     throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");

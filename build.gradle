@@ -56,7 +56,7 @@ jacoco {
 }
 
 ext {
-    kafkaVersion = "0.11.0.1"
+    kafkaVersion = "1.1.0"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
 }
