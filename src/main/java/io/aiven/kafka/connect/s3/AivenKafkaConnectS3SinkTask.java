@@ -32,7 +32,9 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.storage.Converter;
@@ -52,6 +54,8 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
 
+    private final ByteArrayConverter byteArrayConverter = new ByteArrayConverter();
+
     private Map<String, String> taskConfig;
 
     private Base64.Encoder b64Encoder = Base64.getEncoder();
@@ -66,7 +70,8 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         KEY,
         OFFSET,
         TIMESTAMP,
-        VALUE
+        VALUE,
+        HEADERS
     }
 
     OutputFieldType[] outputFields;
@@ -145,6 +150,8 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                 this.outputFields[i] = OutputFieldType.TIMESTAMP;
             } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_VALUE)) {
                 this.outputFields[i] = OutputFieldType.VALUE;
+            } else if (fieldNames[i].equalsIgnoreCase(AivenKafkaConnectS3Constants.OUTPUT_FIELD_NAME_HEADERS)) {
+                this.outputFields[i] = OutputFieldType.HEADERS;
             } else {
                 throw new ConnectException("Unknown output field name '" + fieldNames[i] + "'.");
             }
@@ -272,6 +279,9 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                     case OFFSET:
                         outputRecordBuilder.append(record.kafkaOffset());
                         break;
+                    case HEADERS:
+                        writeHeaders(outputRecordBuilder, record);
+                        break;
                     default:
                 }
             }
@@ -317,5 +327,19 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             return "";
         }
         return templatingEngine.render(prefixTemplate);
+    }
+
+    private void writeHeaders(final StringBuilder sb, final SinkRecord record) {
+        for (final Header header : record.headers()) {
+            final String topic = record.topic();
+            final String key = header.key();
+            final Object value = header.value();
+            final Schema schema = header.schema();
+            sb.append(b64Encoder.encodeToString(key.getBytes()));
+            sb.append(":");
+            final byte[] bytes = byteArrayConverter.fromConnectHeader(topic, key, schema, value);
+            sb.append(b64Encoder.encodeToString(bytes));
+            sb.append(";");
+        }
     }
 }

@@ -91,7 +91,7 @@ Compression type for output files. Supported algorithms are `gzip` and `none`. D
 
 #### `output_fields`
 
-A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
+A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp`, `headers`, and `value`. Defaults to `value`.
 
 ### Example
 
