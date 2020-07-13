@@ -22,13 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import io.aiven.kafka.connect.commons.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
-
-import io.aiven.kafka.connect.common.Version;
-import io.aiven.kafka.connect.s3.config.S3SyncConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +43,7 @@ public class S3SinkConnector extends Connector {
 
     @Override
     public String version() {
-        return Version.getVersion(S3SinkConfig.VERSION_FILE);
+        return Version.VERSION;
     }
 
     @Override

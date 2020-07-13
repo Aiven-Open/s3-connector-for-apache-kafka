@@ -29,10 +29,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
-import io.aiven.kafka.connect.commons.config.CompressionType;
-import io.aiven.kafka.connect.commons.config.OutputFieldType;
-import io.aiven.kafka.connect.commons.config.S3SinkConfig;
-import io.aiven.kafka.connect.commons.templating.TemplatingEngine;
+import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.OutputFieldType;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.templating.TemplatingEngine;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
@@ -76,14 +76,10 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     {
         templatingEngine.bindVariable("utc_date",
-            () -> {
-                return ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE);
-            }
+            () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
         templatingEngine.bindVariable("local_date",
-            () -> {
-                return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-            }
+            () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
     }
 
@@ -217,7 +213,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                     keyName = keyName + ".gz";
                 }
                 stream =
-                    new AivenKafkaConnectS3OutputStream(
+                    new S3OutputStream(
                         this.s3Client,
                         this.taskConfig.get(S3SinkConfig.AWS_S3_BUCKET),
                         keyName

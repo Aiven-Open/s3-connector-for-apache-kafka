@@ -28,7 +28,7 @@ import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.aiven.kafka.connect.commons.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
 
 public class AivenKafkaConnectS3SinkConnector extends Connector {
 

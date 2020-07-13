@@ -16,11 +16,9 @@ In case of ``Access Denied`` error see https://aws.amazon.com/premiumsupport/kno
 
 ## Data Format
 
-<<<<<<< HEAD
 Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector`.
-=======
+
 ### S3 Object Names
->>>>>>> 95e4f23... docs
 
 S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]`. The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
 The connector creates one file per Kafka Connect `offset.flush.interval.ms` setting for partitions that have received new messages during that period. The setting defaults to 60 seconds.
@@ -52,11 +50,9 @@ output instead:
 ,,,1554210895
 ```
 
-<<<<<<< HEAD
 A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp`, `headers`, and `value`. Defaults to `value`.
-=======
+
 ## Usage
->>>>>>> 95e4f23... docs
 
 ### Connector Configuration
 
@@ -82,14 +78,13 @@ List of new configuration parameters:
 - `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`. 
 - `file.compression.type` - Compression type for output files. Supported algorithms are `gzip` and `none`. Defaults to `gzip`.
 - `format.output.fields` - A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
-- `format.output.fields.value.encoding` - Controls encoding of `value` field. POssible values are: `base64` and `none`. Defaults: `base64`
-- `timestamp.timezone` - The time zone in which timestamps are represented.     Accepts short and long standard names like: `UTC`, `PST`, `ECT`, `Europe/Berlin`, `Europe/Helsinki`, or `America/New_York`. For more information please refer to https://docs.oracle.com/javase/tutorial/datetime/iso/timezones.html. The default is `UTC`.
+- `format.output.fields.value.encoding` - Controls encoding of `value` field. Possible values are: `base64` and `none`. Defaults: `base64`
+- `timestamp.timezone` - The time zone in which timestamps are represented. Accepts short and long standard names like: `UTC`, `PST`, `ECT`, `Europe/Berlin`, `Europe/Helsinki`, or `America/New_York`. For more information please refer to https://docs.oracle.com/javase/tutorial/datetime/iso/timezones.html. The default is `UTC`.
 - `timestamp.source` -  The source of timestamps. Supports only `wallclock` which is the default value.
 
 ##### Prefix Templating
 The parameter `aws_s3_prefix` or `aws.s3.prefix` supports templating using `{{ var }}` for variables that will be substituted with values.
 
-<<<<<<< HEAD
 ```
 curl -X POST \
     -H "Content-Type: application/json" \
@@ -114,7 +109,7 @@ curl -X POST \
         }
     EOF
 ```
-=======
+
 Currently supported variables are:
 - `topic` - the Kafka topic;
 - `partition` - the Kafka partition;
@@ -125,7 +120,7 @@ Currently supported variables are:
      - `MM` - month, e.g. `03`
      - `dd` - day, e.g. `01`
      - `HH` - hour, e.g. `24` 
-     
+
 These two variables are deprecated:
 - `utc_date` - the current date in UTC time zone and formatted in ISO 8601 format, e.g. `2019-03-26`
 - `local_date` - the current date in the local time zone and formatted in ISO 8601 format, e.g. `2019-03-26`
@@ -207,4 +202,3 @@ timestamp.timezone=Europe/Berlin
 # Supports only `wallclock` which is the default value.
 timestamp.source=wallclock
 ```
->>>>>>> 95e4f23... docs

@@ -21,19 +21,14 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 
-import io.aiven.kafka.connect.commons.config.S3SinkConfig;
-import io.aiven.kafka.connect.commons.templating.Pair;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.templating.Pair;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 
-import io.aiven.kafka.connect.common.Version;
-import io.aiven.kafka.connect.common.lang.Pair;
-import io.aiven.kafka.connect.s3.config.S3SyncConfig;
-
-import org.glassfish.jersey.internal.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +42,7 @@ public class S3SinkTask extends SinkTask {
 
     // required by Connect
     public S3SinkTask() {
+
     }
 
     @Override
@@ -83,10 +79,9 @@ public class S3SinkTask extends SinkTask {
         streamMap.closeAll();
     }
 
-
     @Override
     public String version() {
-        return Version.getVersion(S3SinkConfig.VERSION_FILE);
+        return Version.VERSION;
     }
 
 }

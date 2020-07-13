@@ -26,18 +26,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.zip.GZIPOutputStream;
 
-import io.aiven.kafka.connect.commons.config.S3SinkConfig;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.sink.SinkRecord;
-
 import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
 import io.aiven.kafka.connect.common.config.Variables;
 import io.aiven.kafka.connect.common.output.OutputWriter;
 import io.aiven.kafka.connect.common.templating.Template;
-import io.aiven.kafka.connect.s3.config.S3SyncConfig;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -47,8 +47,8 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.aiven.kafka.connect.common.config.FormatterUtils.formatKafkaOffset;
-import static io.aiven.kafka.connect.common.config.FormatterUtils.formatTimestamp;
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatKafkaOffset;
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
 
 public class S3StreamWriter {
 
@@ -128,7 +128,7 @@ public class S3StreamWriter {
                     Variables.START_OFFSET.name,
                     parameter -> formatKafkaOffset.apply(record, parameter)
                 )
-                .bindVariable(Variables.TOPIC.name, record::topic)
+                .bindVariable(FilenameTemplateVariable.TOPIC.name, record::topic)
                 .bindVariable(
                     "utc_date",
                     () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -145,7 +145,7 @@ public class S3StreamWriter {
                 record.kafkaPartition(),
                 formatKafkaOffset(record));
         final var fullKey = config.getCompressionType() == CompressionType.GZIP ? prefix + key + ".gz" : prefix + key;
-        final var awsOutputStream = new S3OutputStream(s3Client, config.getBucketName(), fullKey);
+        final var awsOutputStream = new S3OutputStream(s3Client, config.getAwsS3BucketName(), fullKey);
         try {
             return config.getCompressionType() == CompressionType.GZIP
                 ? new GZIPOutputStream(awsOutputStream)

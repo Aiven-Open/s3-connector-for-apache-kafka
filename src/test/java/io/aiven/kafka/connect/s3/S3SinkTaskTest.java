@@ -52,7 +52,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static io.aiven.kafka.connect.commons.config.S3SinkConfig.*;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
