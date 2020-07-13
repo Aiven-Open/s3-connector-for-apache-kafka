@@ -124,6 +124,7 @@ public class S3SinkTaskTest {
 
         properties.put(OUTPUT_COMPRESSION, "gzip");
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
+        properties.put(AWS_S3_PREFIX, "aiven--");
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -136,44 +137,44 @@ public class S3SinkTaskTest {
         Collection<SinkRecord> sinkRecords = createBatchOfRecord(0, 100);
         task.put(sinkRecords);
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz"));
 
         // Flush data - this is called by Connect on offset.flush.interval
         final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        ConnectHeaders extectedConnectHeaders = createTestHeaders();
+        ConnectHeaders expectedConnectHeaders = createTestHeaders();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz"));
 
-        S3Object s3Object = s3Client.getObject(TEST_BUCKET, "test-topic-0-0000000000.gz");
+        S3Object s3Object = s3Client.getObject(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz");
         S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3ObjectInputStream)))) {
             for (String line; (line = br.readLine()) != null;) {
                 String[] parts = line.split(",");
                 ConnectHeaders actualConnectHeaders = readHeaders(parts[4]);
-                assertTrue(headersEquals(actualConnectHeaders, extectedConnectHeaders));
+                assertTrue(headersEquals(actualConnectHeaders, expectedConnectHeaders));
             }
         }
 
         // * Verify that we store data on partition unassignment
         task.put(createBatchOfRecord(100, 200));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000100.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000100.gz"));
 
         task.close(tps);
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-00000000000000000100.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000100.gz"));
 
         // * Verify that we store data on SinkTask shutdown
         task.put(createBatchOfRecord(200, 300));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-00000000000000000200.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000200.gz"));
 
         task.stop();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-00000000000000000200.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000200.gz"));
     }
 
     @Test

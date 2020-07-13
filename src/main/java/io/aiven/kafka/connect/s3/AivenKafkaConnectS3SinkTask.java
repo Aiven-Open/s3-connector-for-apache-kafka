@@ -17,18 +17,12 @@
 
 package io.aiven.kafka.connect.s3;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.zip.GZIPOutputStream;
-
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.common.config.OutputFieldType;
 import io.aiven.kafka.connect.common.config.S3SinkConfig;
@@ -42,15 +36,20 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.storage.Converter;
-
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
@@ -79,7 +78,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
         templatingEngine.bindVariable("local_date",
-            () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
     }
 
@@ -96,8 +95,8 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
 
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-            props.get(S3SinkConfig.AWS_ACCESS_KEY_ID),
-            props.get(S3SinkConfig.AWS_SECRET_ACCESS_KEY)
+                props.get(S3SinkConfig.AWS_ACCESS_KEY_ID),
+                props.get(S3SinkConfig.AWS_SECRET_ACCESS_KEY)
         );
         builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
 
@@ -158,7 +157,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     @Override
     public void stop() {
         LOGGER.info("AivenKafkaConnectS3SinkTask stopping");
-        for (final TopicPartition tp: this.outputStreams.keySet()) {
+        for (final TopicPartition tp : this.outputStreams.keySet()) {
             final OutputStream stream = this.outputStreams.get(tp);
             if (stream != null) {
                 try {
@@ -174,14 +173,14 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     @Override
     public void open(final Collection<TopicPartition> partitions) {
         // We don't need to do anything here; we'll create the streams on first message on a partition
-        for (final TopicPartition tp: partitions) {
+        for (final TopicPartition tp : partitions) {
             LOGGER.info("New assignment " + tp.topic() + "#" + tp.partition());
         }
     }
 
     @Override
     public void close(final Collection<TopicPartition> partitions) throws ConnectException {
-        for (final TopicPartition tp: partitions) {
+        for (final TopicPartition tp : partitions) {
             LOGGER.info("Unassigned " + tp.topic() + "#" + tp.partition());
             final OutputStream stream = this.outputStreams.get(tp);
             if (stream != null) {
@@ -198,7 +197,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
     @Override
     public void put(final Collection<SinkRecord> records) throws ConnectException {
         LOGGER.info("Processing " + records.size() + " records");
-        for (final SinkRecord record: records) {
+        for (final SinkRecord record : records) {
             final String topic = record.topic();
             final Integer partition = record.kafkaPartition();
             final TopicPartition tp = new TopicPartition(topic, partition);
@@ -207,17 +206,17 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             OutputStream stream = this.outputStreams.get(tp);
             if (stream == null) {
                 String keyName = getS3Prefix() + topic
-                    + "-" + partition
-                    + "-" + String.format("%010d", record.kafkaOffset());
+                        + "-" + partition
+                        + "-" + String.format("%010d", record.kafkaOffset());
                 if (this.outputCompression == CompressionType.GZIP) {
                     keyName = keyName + ".gz";
                 }
                 stream =
-                    new S3OutputStream(
-                        this.s3Client,
-                        this.taskConfig.get(S3SinkConfig.AWS_S3_BUCKET),
-                        keyName
-                    );
+                        new S3OutputStream(
+                                this.s3Client,
+                                this.taskConfig.get(S3SinkConfig.AWS_S3_BUCKET),
+                                keyName
+                        );
                 if (this.outputCompression == CompressionType.GZIP) {
                     try {
                         stream = new GZIPOutputStream(stream);
@@ -240,9 +239,9 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                         final Object keyRaw = record.key();
                         if (keyRaw != null) {
                             final byte[] key = this.keyConverter.fromConnectData(
-                                record.topic(),
-                                record.valueSchema(),
-                                keyRaw
+                                    record.topic(),
+                                    record.valueSchema(),
+                                    keyRaw
                             );
                             outputRecordBuilder.append(this.b64Encoder.encodeToString(key));
                         }
@@ -251,9 +250,9 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                         final Object valueRaw = record.value();
                         if (valueRaw != null) {
                             final byte[] value = this.valueConverter.fromConnectData(
-                                record.topic(),
-                                record.valueSchema(),
-                                valueRaw
+                                    record.topic(),
+                                    record.valueSchema(),
+                                    valueRaw
                             );
                             outputRecordBuilder.append(this.b64Encoder.encodeToString(value));
                         }
@@ -281,7 +280,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         }
 
         // Send flush signal down the streams, and give opportunity for part uploads
-        for (final OutputStream stream: this.outputStreams.values()) {
+        for (final OutputStream stream : this.outputStreams.values()) {
             try {
                 stream.flush();
             } catch (final IOException e) {
@@ -292,7 +291,7 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     @Override
     public void flush(final Map<TopicPartition, OffsetAndMetadata> offsets) {
-        for (final TopicPartition tp: offsets.keySet()) {
+        for (final TopicPartition tp : offsets.keySet()) {
             final OutputStream stream = this.outputStreams.get(tp);
             if (stream != null) {
                 LOGGER.info("Flush records for " + tp.topic() + "-" + tp.partition());
