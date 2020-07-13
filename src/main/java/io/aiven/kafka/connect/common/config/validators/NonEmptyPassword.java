@@ -18,7 +18,6 @@
 package io.aiven.kafka.connect.common.config.validators;
 
 import java.util.Objects;
-
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;

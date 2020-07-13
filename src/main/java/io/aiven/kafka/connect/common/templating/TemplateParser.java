@@ -17,12 +17,11 @@
 
 package io.aiven.kafka.connect.common.templating;
 
+import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,29 +30,29 @@ public final class TemplateParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(TemplateParser.class);
 
     private static final Pattern VARIABLE_PATTERN =
-            Pattern.compile("\\{\\{\\s*([\\w]+)?(:?)([\\w=]+)?\\s*}}"); // {{ var:foo=bar }}
+        Pattern.compile("\\{\\{\\s*([\\w]+)?(:?)([\\w=]+)?\\s*}}"); // {{ var:foo=bar }}
 
     private static final Pattern PARAMETER_PATTERN =
-            Pattern.compile("([\\w]+)?=?([\\w]+)?"); // foo=bar
+        Pattern.compile("([\\w]+)?=?([\\w]+)?"); // foo=bar
 
     private TemplateParser() {
 
     }
 
     public static Pair<List<Pair<String, VariableTemplatePart.Parameter>>, List<TemplatePart>> parse(
-            final String template) {
+        final String template) {
         LOGGER.debug("Parse template: {}", template);
 
         final ImmutableList.Builder<Pair<String, VariableTemplatePart.Parameter>> variablesAndParametersBuilder =
-                ImmutableList.builder();
+            ImmutableList.builder();
         final ImmutableList.Builder<TemplatePart> templatePartsBuilder =
-                ImmutableList.builder();
+            ImmutableList.builder();
         final Matcher m = VARIABLE_PATTERN.matcher(template);
 
         int position = 0;
         while (m.find()) {
             templatePartsBuilder.add(
-                    new TextTemplatePart(template.substring(position, m.start()))
+                new TextTemplatePart(template.substring(position, m.start()))
             );
             final String variable = m.group(1);
             final String parameterDef = m.group(2);
@@ -61,10 +60,10 @@ public final class TemplateParser {
 
             if (Objects.isNull(variable)) {
                 throw new IllegalArgumentException(
-                        String.format(
-                                "Variable name has't been set for template: %s",
-                                template
-                        )
+                    String.format(
+                        "Variable name has't been set for template: %s",
+                        template
+                    )
                 );
             }
 
@@ -88,10 +87,10 @@ public final class TemplateParser {
             final Matcher m = PARAMETER_PATTERN.matcher(parameter);
             if (!m.find()) {
                 throw new IllegalArgumentException(
-                        String.format(
-                                "Parameter hasn't been set for variable `%s`",
-                                variable
-                        )
+                    String.format(
+                        "Parameter hasn't been set for variable `%s`",
+                        variable
+                    )
                 );
             }
             final String name = m.group(1);
@@ -99,19 +98,19 @@ public final class TemplateParser {
 
             if (Objects.isNull(name)) {
                 throw new IllegalArgumentException(
-                        String.format(
-                                "Parameter name for variable `%s` has not been set",
-                                variable
-                        )
+                    String.format(
+                        "Parameter name for variable `%s` has not been set",
+                        variable
+                    )
                 );
             }
             if (Objects.isNull(value)) {
                 throw new IllegalArgumentException(
-                        String.format(
-                                "Parameter value for variable `%s` and parameter `%s` has not been set",
-                                variable,
-                                name
-                        )
+                    String.format(
+                        "Parameter value for variable `%s` and parameter `%s` has not been set",
+                        variable,
+                        name
+                    )
                 );
             }
 

@@ -17,6 +17,7 @@
 
 package io.aiven.kafka.connect.common.output;
 
+import io.aiven.kafka.connect.common.config.OutputField;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -25,11 +26,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
-
-import io.aiven.kafka.connect.common.config.OutputField;
 
 public final class OutputWriter {
 
@@ -40,6 +38,10 @@ public final class OutputWriter {
 
     private OutputWriter(final List<OutputFieldWriter> writers) {
         this.writers = writers;
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public void writeRecord(final SinkRecord record,
@@ -118,9 +120,5 @@ public final class OutputWriter {
         public final OutputWriter build() {
             return new OutputWriter(writers);
         }
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 }

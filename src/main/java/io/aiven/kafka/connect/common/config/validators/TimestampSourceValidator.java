@@ -17,10 +17,9 @@
 
 package io.aiven.kafka.connect.common.config.validators;
 
+import io.aiven.kafka.connect.common.config.TimestampSource;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
-
-import io.aiven.kafka.connect.common.config.TimestampSource;
 
 public class TimestampSourceValidator implements ConfigDef.Validator {
 

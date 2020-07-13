@@ -17,15 +17,15 @@
 
 package io.aiven.kafka.connect.common.config;
 
-import com.google.common.base.Objects;
-
 import java.util.stream.Collectors;
+
+import com.google.common.base.Objects;
 
 public class OutputField {
     public static final String SUPPORTED_OUTPUT_FIELDS =
-            OutputFieldType.names().stream()
-                    .map(f -> "'" + f + "'")
-                    .collect(Collectors.joining(", "));
+        OutputFieldType.names().stream()
+            .map(f -> "'" + f + "'")
+            .collect(Collectors.joining(", "));
 
     private final OutputFieldType fieldType;
     private final OutputFieldEncodingType encodingType;
@@ -61,6 +61,6 @@ public class OutputField {
         final OutputField that = (OutputField) obj;
 
         return Objects.equal(this.fieldType, that.fieldType)
-                && Objects.equal(this.encodingType, that.encodingType);
+            && Objects.equal(this.encodingType, that.encodingType);
     }
 }

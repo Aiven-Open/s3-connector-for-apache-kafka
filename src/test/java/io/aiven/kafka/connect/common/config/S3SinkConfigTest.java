@@ -17,6 +17,29 @@
 
 package io.aiven.kafka.connect.common.config;
 
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_ACCESS_KEY_ID;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_BUCKET;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_ENDPOINT;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_PREFIX;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_PREFIX_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_REGION;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_REGION_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.OUTPUT_COMPRESSION;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.OUTPUT_FIELDS;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.TIMESTAMP_SOURCE;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.TIMESTAMP_TIMEZONE;
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.amazonaws.regions.Regions;
+import com.google.common.collect.Maps;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,21 +47,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
 import org.apache.kafka.common.config.ConfigException;
-
-import com.amazonaws.regions.Regions;
-import com.google.common.collect.Maps;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static io.aiven.kafka.connect.common.config.S3SinkConfig.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
 
 class S3SinkConfigTest {
 
@@ -645,7 +658,7 @@ class S3SinkConfigTest {
             config.getPrefixTemplate()
                 .instance()
                 .bindVariable("timestamp", parameter ->
-                        formatTimestamp.apply(config.getTimestampSource(), parameter))
+                    formatTimestamp.apply(config.getTimestampSource(), parameter))
                 .render();
 
         assertEquals(

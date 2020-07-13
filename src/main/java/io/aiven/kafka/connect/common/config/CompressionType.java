@@ -49,9 +49,9 @@ public enum CompressionType {
     };
 
     public static final String SUPPORTED_COMPRESSION_TYPES =
-            CompressionType.names().stream()
-                    .map(c -> String.format("'%s'", c))
-                    .collect(Collectors.joining(", "));
+        CompressionType.names().stream()
+            .map(c -> String.format("'%s'", c))
+            .collect(Collectors.joining(", "));
 
     public final String name;
 

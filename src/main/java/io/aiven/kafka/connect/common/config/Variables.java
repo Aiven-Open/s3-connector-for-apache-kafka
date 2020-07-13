@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2020 Aiven Oy
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package io.aiven.kafka.connect.common.config;
 
 import java.util.Collections;
@@ -11,45 +28,31 @@ public enum Variables {
     TOPIC("topic"),
     PARTITION("partition"),
     START_OFFSET(
-            "start_offset",
-            new ParameterDescriptor(
-                    "padding",
-                    false,
-                    ImmutableSet.of(Boolean.TRUE.toString(), Boolean.FALSE.toString())
-            )
+        "start_offset",
+        new ParameterDescriptor(
+            "padding",
+            false,
+            ImmutableSet.of(Boolean.TRUE.toString(), Boolean.FALSE.toString())
+        )
     ),
     TIMESTAMP(
-            "timestamp",
-            new ParameterDescriptor(
-                    "unit",
-                    true,
-                    ImmutableSet.of("YYYY", "MM", "dd", "HH")
-            )
+        "timestamp",
+        new ParameterDescriptor(
+            "unit",
+            true,
+            ImmutableSet.of("YYYY", "MM", "dd", "HH")
+        )
     );
 
-    public String description() {
-        return
-                (parameterDescriptor != ParameterDescriptor.NO_PARAMETER && !parameterDescriptor.values.isEmpty())
-                        ? String.join(
-                        "=",
-                        String.join(
-                                ":",
-                                name,
-                                parameterDescriptor.name),
-                        parameterDescriptor.toString()
-                ) : name;
-    }
-
     public final String name;
-
     public final ParameterDescriptor parameterDescriptor;
 
-    private Variables(final String name) {
+    Variables(final String name) {
         this(name, ParameterDescriptor.NO_PARAMETER);
     }
 
-    private Variables(final String name,
-                      final ParameterDescriptor parameterDescriptor) {
+    Variables(final String name,
+              final ParameterDescriptor parameterDescriptor) {
         this.name = name;
         this.parameterDescriptor = parameterDescriptor;
     }
@@ -61,17 +64,30 @@ public enum Variables {
             }
         }
         throw new IllegalArgumentException(
-                String.format("Unknown variable: %s", name)
+            String.format("Unknown variable: %s", name)
         );
+    }
+
+    public String description() {
+        return
+            (parameterDescriptor != ParameterDescriptor.NO_PARAMETER && !parameterDescriptor.values.isEmpty())
+                ? String.join(
+                "=",
+                String.join(
+                    ":",
+                    name,
+                    parameterDescriptor.name),
+                parameterDescriptor.toString()
+            ) : name;
     }
 
     public static class ParameterDescriptor {
 
         public static final ParameterDescriptor NO_PARAMETER =
-                new ParameterDescriptor(
-                        "__no_parameter__",
-                        false,
-                        Collections.emptySet());
+            new ParameterDescriptor(
+                "__no_parameter__",
+                false,
+                Collections.emptySet());
 
         public final String name;
 
@@ -90,8 +106,8 @@ public enum Variables {
         @Override
         public String toString() {
             return !values.isEmpty()
-                    ? String.join("|", values)
-                    : "";
+                ? String.join("|", values)
+                : "";
         }
 
         @Override
@@ -104,8 +120,8 @@ public enum Variables {
             }
             final ParameterDescriptor that = (ParameterDescriptor) o;
             return required == that.required
-                    && Objects.equals(name, that.name)
-                    && Objects.equals(values, that.values);
+                && Objects.equals(name, that.name)
+                && Objects.equals(values, that.values);
         }
 
         @Override

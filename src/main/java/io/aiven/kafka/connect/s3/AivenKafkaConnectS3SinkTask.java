@@ -17,28 +17,6 @@
 
 package io.aiven.kafka.connect.s3;
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import io.aiven.kafka.connect.common.config.CompressionType;
-import io.aiven.kafka.connect.common.config.OutputFieldType;
-import io.aiven.kafka.connect.common.config.S3SinkConfig;
-import io.aiven.kafka.connect.common.templating.TemplatingEngine;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.connect.converters.ByteArrayConverter;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.header.Header;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.sink.SinkTask;
-import org.apache.kafka.connect.storage.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
@@ -51,34 +29,51 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.connect.converters.ByteArrayConverter;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.sink.SinkTask;
+import org.apache.kafka.connect.storage.Converter;
+
+import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.OutputFieldType;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.templating.TemplatingEngine;
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class AivenKafkaConnectS3SinkTask extends SinkTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
 
     private final ByteArrayConverter byteArrayConverter = new ByteArrayConverter();
-
-    private Map<String, String> taskConfig;
-
     private final Base64.Encoder b64Encoder = Base64.getEncoder();
+    private final TemplatingEngine templatingEngine = new TemplatingEngine();
+    private final Map<TopicPartition, OutputStream> outputStreams = new HashMap<>();
+    OutputFieldType[] outputFields;
+    CompressionType outputCompression = CompressionType.GZIP;
+    private Map<String, String> taskConfig;
     private Converter keyConverter;
     private Converter valueConverter;
-
     private AmazonS3 s3Client;
-
-    private Map<TopicPartition, OutputStream> outputStreams = new HashMap<>();
-
-    OutputFieldType[] outputFields;
-
-    CompressionType outputCompression = CompressionType.GZIP;
-
-    private final TemplatingEngine templatingEngine = new TemplatingEngine();
 
     {
         templatingEngine.bindVariable("utc_date",
             () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
         templatingEngine.bindVariable("local_date",
-                () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            () -> LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         );
     }
 
@@ -95,8 +90,8 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
 
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-                props.get(S3SinkConfig.AWS_ACCESS_KEY_ID),
-                props.get(S3SinkConfig.AWS_SECRET_ACCESS_KEY)
+            props.get(S3SinkConfig.AWS_ACCESS_KEY_ID),
+            props.get(S3SinkConfig.AWS_SECRET_ACCESS_KEY)
         );
         builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
 
@@ -206,17 +201,17 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
             OutputStream stream = this.outputStreams.get(tp);
             if (stream == null) {
                 String keyName = getS3Prefix() + topic
-                        + "-" + partition
-                        + "-" + String.format("%010d", record.kafkaOffset());
+                    + "-" + partition
+                    + "-" + String.format("%010d", record.kafkaOffset());
                 if (this.outputCompression == CompressionType.GZIP) {
                     keyName = keyName + ".gz";
                 }
                 stream =
-                        new S3OutputStream(
-                                this.s3Client,
-                                this.taskConfig.get(S3SinkConfig.AWS_S3_BUCKET),
-                                keyName
-                        );
+                    new S3OutputStream(
+                        this.s3Client,
+                        this.taskConfig.get(S3SinkConfig.AWS_S3_BUCKET),
+                        keyName
+                    );
                 if (this.outputCompression == CompressionType.GZIP) {
                     try {
                         stream = new GZIPOutputStream(stream);
@@ -239,9 +234,9 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                         final Object keyRaw = record.key();
                         if (keyRaw != null) {
                             final byte[] key = this.keyConverter.fromConnectData(
-                                    record.topic(),
-                                    record.valueSchema(),
-                                    keyRaw
+                                record.topic(),
+                                record.valueSchema(),
+                                keyRaw
                             );
                             outputRecordBuilder.append(this.b64Encoder.encodeToString(key));
                         }
@@ -250,9 +245,9 @@ public class AivenKafkaConnectS3SinkTask extends SinkTask {
                         final Object valueRaw = record.value();
                         if (valueRaw != null) {
                             final byte[] value = this.valueConverter.fromConnectData(
-                                    record.topic(),
-                                    record.valueSchema(),
-                                    valueRaw
+                                record.topic(),
+                                record.valueSchema(),
+                                valueRaw
                             );
                             outputRecordBuilder.append(this.b64Encoder.encodeToString(value));
                         }

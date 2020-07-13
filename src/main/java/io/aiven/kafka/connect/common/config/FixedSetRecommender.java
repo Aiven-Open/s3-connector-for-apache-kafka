@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.kafka.common.config.ConfigDef;
 
 /**
@@ -39,6 +38,11 @@ public class FixedSetRecommender implements ConfigDef.Recommender {
         this.supportedValues = new ArrayList<>(supportedValues);
     }
 
+    public static FixedSetRecommender ofSupportedValues(final Collection<?> supportedValues) {
+        Objects.requireNonNull(supportedValues, "supportedValues cannot be null");
+        return new FixedSetRecommender(supportedValues);
+    }
+
     @Override
     public List<Object> validValues(final String name, final Map<String, Object> parsedConfig) {
         return Collections.unmodifiableList(supportedValues);
@@ -47,10 +51,5 @@ public class FixedSetRecommender implements ConfigDef.Recommender {
     @Override
     public boolean visible(final String name, final Map<String, Object> parsedConfig) {
         return true;
-    }
-
-    public static FixedSetRecommender ofSupportedValues(final Collection<?> supportedValues) {
-        Objects.requireNonNull(supportedValues, "supportedValues cannot be null");
-        return new FixedSetRecommender(supportedValues);
     }
 }

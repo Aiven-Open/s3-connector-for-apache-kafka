@@ -17,6 +17,25 @@
 
 package io.aiven.kafka.connect.s3;
 
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_ACCESS_KEY_ID;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_BUCKET;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_ENDPOINT;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_PREFIX;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_S3_REGION;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.OUTPUT_COMPRESSION;
+import static io.aiven.kafka.connect.common.config.S3SinkConfig.OUTPUT_FIELDS;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import io.findify.s3mock.S3Mock;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -25,11 +44,17 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
 import java.util.zip.GZIPInputStream;
-
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
@@ -39,22 +64,11 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
-
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import io.findify.s3mock.S3Mock;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static io.aiven.kafka.connect.common.config.S3SinkConfig.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class S3SinkTaskTest {
 
@@ -87,13 +101,13 @@ public class S3SinkTaskTest {
 
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
-                commonProperties.get(AWS_ACCESS_KEY_ID),
-                commonProperties.get(AWS_SECRET_ACCESS_KEY)
+            commonProperties.get(AWS_ACCESS_KEY_ID),
+            commonProperties.get(AWS_SECRET_ACCESS_KEY)
         );
         builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds));
         builder.withEndpointConfiguration(new EndpointConfiguration(
-                commonProperties.get(AWS_S3_ENDPOINT),
-                commonProperties.get(AWS_S3_REGION)
+            commonProperties.get(AWS_S3_ENDPOINT),
+            commonProperties.get(AWS_S3_REGION)
         ));
         builder.withPathStyleAccessEnabled(true);
 
@@ -151,7 +165,7 @@ public class S3SinkTaskTest {
         S3Object s3Object = s3Client.getObject(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz");
         S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3ObjectInputStream)))) {
-            for (String line; (line = br.readLine()) != null;) {
+            for (String line; (line = br.readLine()) != null; ) {
                 String[] parts = line.split(",");
                 ConnectHeaders actualConnectHeaders = readHeaders(parts[4]);
                 assertTrue(headersEquals(actualConnectHeaders, expectedConnectHeaders));
@@ -224,7 +238,7 @@ public class S3SinkTaskTest {
         task.flush(offsets);
 
         final String expectedFileName = String.format("prefix-%s--test-topic-0-00000000000000000000.gz",
-                ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE));
+            ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE));
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
         task.stop();
@@ -264,14 +278,14 @@ public class S3SinkTaskTest {
         for (int offset = offsetFrom; offset < offsetTo; offset++) {
             ConnectHeaders connectHeaders = createTestHeaders();
             final SinkRecord record = new SinkRecord(
-                    "test-topic",
-                    0,
-                    Schema.BYTES_SCHEMA, "test-key".getBytes(),
-                    Schema.BYTES_SCHEMA, "test-value".getBytes(),
-                    offset,
-                    1000L,
-                    TimestampType.CREATE_TIME,
-                    connectHeaders
+                "test-topic",
+                0,
+                Schema.BYTES_SCHEMA, "test-key".getBytes(),
+                Schema.BYTES_SCHEMA, "test-value".getBytes(),
+                offset,
+                1000L,
+                TimestampType.CREATE_TIME,
+                connectHeaders
             );
             records.add(record);
 

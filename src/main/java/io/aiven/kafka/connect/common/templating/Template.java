@@ -17,7 +17,11 @@
 
 package io.aiven.kafka.connect.common.templating;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -26,7 +30,7 @@ import java.util.stream.Collectors;
 public final class Template {
 
     private static final Pattern VARIABLE_PATTERN =
-            Pattern.compile("\\{\\{\\s*(([\\w_]+)(:([\\w]+)=([\\w]+))?)\\s*}}");
+        Pattern.compile("\\{\\{\\s*(([\\w_]+)(:([\\w]+)=([\\w]+))?)\\s*}}");
 
     private final List<Pair<String, VariableTemplatePart.Parameter>> variablesAndParameters;
 
@@ -42,14 +46,22 @@ public final class Template {
         this.templateParts = templateParts;
     }
 
+    public static Template of(final String template) {
+
+        final Pair<List<Pair<String, VariableTemplatePart.Parameter>>, List<TemplatePart>>
+            parsingResult = TemplateParser.parse(template);
+
+        return new Template(template, parsingResult.left(), parsingResult.right());
+    }
+
     public String originalTemplate() {
         return originalTemplateString;
     }
 
     public final List<String> variables() {
         return variablesAndParameters.stream()
-                .map(Pair::left)
-                .collect(Collectors.toList());
+            .map(Pair::left)
+            .collect(Collectors.toList());
     }
 
     public final Set<String> variablesSet() {
@@ -60,22 +72,14 @@ public final class Template {
         return variablesAndParameters;
     }
 
-    public final List<Pair<String, VariableTemplatePart.Parameter>>  variablesWithNonEmptyParameters() {
+    public final List<Pair<String, VariableTemplatePart.Parameter>> variablesWithNonEmptyParameters() {
         return variablesAndParameters.stream()
-                .filter(e -> !e.right().isEmpty())
-                .collect(Collectors.toList());
+            .filter(e -> !e.right().isEmpty())
+            .collect(Collectors.toList());
     }
 
     public final Instance instance() {
         return new Instance();
-    }
-
-    public static Template of(final String template) {
-
-        final Pair<List<Pair<String, VariableTemplatePart.Parameter>>, List<TemplatePart>>
-                parsingResult = TemplateParser.parse(template);
-
-        return new Template(template, parsingResult.left(), parsingResult.right());
     }
 
     @Override
@@ -85,7 +89,7 @@ public final class Template {
 
     public final class Instance {
         private final Map<String, Function<VariableTemplatePart.Parameter, String>> bindings =
-                new HashMap<>();
+            new HashMap<>();
 
         private Instance() {
         }
@@ -115,7 +119,7 @@ public final class Template {
                 } else if (templatePart instanceof VariableTemplatePart) {
                     final VariableTemplatePart variableTemplatePart = (VariableTemplatePart) templatePart;
                     final Function<VariableTemplatePart.Parameter, String> binding =
-                            bindings.get(variableTemplatePart.variableName());
+                        bindings.get(variableTemplatePart.variableName());
                     // Substitute for bound variables, pass the variable pattern as is for non-bound.
                     if (Objects.nonNull(binding)) {
                         sb.append(binding.apply(variableTemplatePart.parameter()));

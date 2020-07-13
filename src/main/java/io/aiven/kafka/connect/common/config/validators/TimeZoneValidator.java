@@ -18,7 +18,6 @@
 package io.aiven.kafka.connect.common.config.validators;
 
 import java.time.ZoneId;
-
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 

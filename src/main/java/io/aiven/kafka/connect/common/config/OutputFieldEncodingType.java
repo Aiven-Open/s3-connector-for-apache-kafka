@@ -27,9 +27,9 @@ public enum OutputFieldEncodingType {
     BASE64("base64");
 
     public static final String SUPPORTED_FIELD_ENCODING_TYPES =
-            OutputFieldEncodingType.names().stream()
-                    .map(c -> String.format("'%s'", c))
-                    .collect(Collectors.joining(", "));
+        OutputFieldEncodingType.names().stream()
+            .map(c -> String.format("'%s'", c))
+            .collect(Collectors.joining(", "));
 
     public final String name;
 

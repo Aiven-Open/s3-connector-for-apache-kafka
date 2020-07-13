@@ -17,6 +17,13 @@
 
 package io.aiven.kafka.connect.common.grouper;
 
+import com.google.common.collect.ImmutableMap;
+
+import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
+import io.aiven.kafka.connect.common.config.TimestampSource;
+import io.aiven.kafka.connect.common.templating.Template;
+import io.aiven.kafka.connect.common.templating.VariableTemplatePart.Parameter;
+
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,17 +33,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import com.google.common.collect.ImmutableMap;
-import io.aiven.kafka.connect.common.templating.FormatterUtils;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.sink.SinkRecord;
-
-import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
-import io.aiven.kafka.connect.common.config.TimestampSource;
-import io.aiven.kafka.connect.common.templating.Template;
-import io.aiven.kafka.connect.common.templating.VariableTemplatePart.Parameter;
-
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
 
 /**
  * A {@link RecordGrouper} that groups records by topic and partition.
@@ -75,12 +73,12 @@ final class TopicPartitionRecordGrouper implements RecordGrouper {
 
             //FIXME move into commons lib
             private final Map<String, DateTimeFormatter> timestampFormatters =
-                    ImmutableMap.of(
-                            "YYYY", DateTimeFormatter.ofPattern("YYYY"),
-                            "MM", DateTimeFormatter.ofPattern("MM"),
-                            "dd", DateTimeFormatter.ofPattern("dd"),
-                            "HH", DateTimeFormatter.ofPattern("HH")
-                    );
+                ImmutableMap.of(
+                    "YYYY", DateTimeFormatter.ofPattern("YYYY"),
+                    "MM", DateTimeFormatter.ofPattern("MM"),
+                    "dd", DateTimeFormatter.ofPattern("dd"),
+                    "HH", DateTimeFormatter.ofPattern("HH")
+                );
 
             @Override
             public String apply(final Parameter parameter) {
@@ -111,25 +109,25 @@ final class TopicPartitionRecordGrouper implements RecordGrouper {
     private String generateRecordKey(final TopicPartition tp, final SinkRecord headRecord) {
         //FIXME move into commons lib
         final Function<Parameter, String> setKafkaOffset =
-                usePaddingParameter -> usePaddingParameter.asBoolean()
-                        ? String.format("%020d", headRecord.kafkaOffset())
-                        : Long.toString(headRecord.kafkaOffset());
+            usePaddingParameter -> usePaddingParameter.asBoolean()
+                ? String.format("%020d", headRecord.kafkaOffset())
+                : Long.toString(headRecord.kafkaOffset());
 
         return filenameTemplate.instance()
-                .bindVariable(FilenameTemplateVariable.TOPIC.name, tp::topic)
-                .bindVariable(
-                        FilenameTemplateVariable.PARTITION.name,
-                        () -> Integer.toString(tp.partition())
-                )
-                .bindVariable(
-                        FilenameTemplateVariable.START_OFFSET.name,
-                        setKafkaOffset
-                )
-                .bindVariable(
-                        FilenameTemplateVariable.TIMESTAMP.name,
-                        setTimestamp
-                )
-                .render();
+            .bindVariable(FilenameTemplateVariable.TOPIC.name, tp::topic)
+            .bindVariable(
+                FilenameTemplateVariable.PARTITION.name,
+                () -> Integer.toString(tp.partition())
+            )
+            .bindVariable(
+                FilenameTemplateVariable.START_OFFSET.name,
+                setKafkaOffset
+            )
+            .bindVariable(
+                FilenameTemplateVariable.TIMESTAMP.name,
+                setTimestamp
+            )
+            .render();
     }
 
     private boolean shouldCreateNewFile(final String recordKey) {

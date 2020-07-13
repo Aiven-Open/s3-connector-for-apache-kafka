@@ -126,8 +126,6 @@ dependencies {
     compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
     compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
 
-//    implementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
-
     implementation "org.slf4j:slf4j-api:$slf4jVersion"
     implementation "com.amazonaws:aws-java-sdk-s3:$amazonS3Version"
 

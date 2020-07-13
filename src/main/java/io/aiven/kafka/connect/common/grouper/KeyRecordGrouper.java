@@ -19,11 +19,15 @@ package io.aiven.kafka.connect.common.grouper;
 
 import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
 import io.aiven.kafka.connect.common.templating.Template;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.sink.SinkRecord;
-
-import java.util.*;
-import java.util.function.Supplier;
 
 public final class KeyRecordGrouper implements RecordGrouper {
 
@@ -68,8 +72,8 @@ public final class KeyRecordGrouper implements RecordGrouper {
         };
 
         return filenameTemplate.instance()
-                .bindVariable(FilenameTemplateVariable.KEY.name, setKey)
-                .render();
+            .bindVariable(FilenameTemplateVariable.KEY.name, setKey)
+            .render();
     }
 
     @Override

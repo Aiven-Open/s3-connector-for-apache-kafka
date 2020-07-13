@@ -1,42 +1,38 @@
 package io.aiven.kafka.connect.common.templating;
 
-import com.google.common.collect.ImmutableMap;
 import io.aiven.kafka.connect.common.config.TimestampSource;
-import org.apache.kafka.connect.sink.SinkRecord;
 import io.aiven.kafka.connect.common.templating.VariableTemplatePart.Parameter;
-
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 public class FormatterUtils {
     public static final BiFunction<SinkRecord, Parameter, String> formatKafkaOffset =
-            (sinkRecord, usePaddingParameter) ->
-                    usePaddingParameter.asBoolean()
-                            ? String.format("%020d", sinkRecord.kafkaOffset())
-                            : Long.toString(sinkRecord.kafkaOffset());
+        (sinkRecord, usePaddingParameter) ->
+            usePaddingParameter.asBoolean()
+                ? String.format("%020d", sinkRecord.kafkaOffset())
+                : Long.toString(sinkRecord.kafkaOffset());
+    public static final BiFunction<TimestampSource, Parameter, String> formatTimestamp =
+        new BiFunction<>() {
+            private final Map<String, DateTimeFormatter> fomatterMap =
+                Map.of(
+                    "YYYY", DateTimeFormatter.ofPattern("YYYY"),
+                    "MM", DateTimeFormatter.ofPattern("MM"),
+                    "dd", DateTimeFormatter.ofPattern("dd"),
+                    "HH", DateTimeFormatter.ofPattern("HH")
+                );
+
+            @Override
+            public String apply(final TimestampSource timestampSource, final Parameter parameter) {
+                return timestampSource.time().format(fomatterMap.get(parameter.value()));
+            }
+
+        };
 
     public static String formatKafkaOffset(final SinkRecord record) {
         return formatKafkaOffset.apply(record, Parameter.of("padding", "true"));
     }
-
-    public static final BiFunction<TimestampSource, Parameter, String> formatTimestamp =
-            new BiFunction<>() {
-                private final Map<String, DateTimeFormatter> fomatterMap =
-                        Map.of(
-                                "YYYY", DateTimeFormatter.ofPattern("YYYY"),
-                                "MM", DateTimeFormatter.ofPattern("MM"),
-                                "dd", DateTimeFormatter.ofPattern("dd"),
-                                "HH", DateTimeFormatter.ofPattern("HH")
-                        );
-
-                @Override
-                public String apply(final TimestampSource timestampSource, final Parameter parameter) {
-                    return timestampSource.time().format(fomatterMap.get(parameter.value()));
-                }
-
-            };
 
 //    public static Function<Parameter, String> createKafkaOffsetBinding(final SinkRecord headRecord) {
 //        return usePaddingParameter -> usePaddingParameter.asBoolean()

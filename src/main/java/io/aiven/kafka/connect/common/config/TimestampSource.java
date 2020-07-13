@@ -23,8 +23,6 @@ import java.time.ZonedDateTime;
 
 public interface TimestampSource {
 
-    ZonedDateTime time();
-
     static TimestampSource of(final Type extractorType) {
         return of(ZoneOffset.UTC, extractorType);
     }
@@ -34,9 +32,11 @@ public interface TimestampSource {
             return new WallclockTimestampSource(zoneId);
         }
         throw new IllegalArgumentException(
-                String.format("Unsupported timestamp extractor type: %s", extractorType)
+            String.format("Unsupported timestamp extractor type: %s", extractorType)
         );
     }
+
+    ZonedDateTime time();
 
     enum Type {
         WALLCLOCK;

@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  * Non-bound variables are left as is.
  */
 public final class TemplatingEngine {
-    private static Pattern variablePattern = Pattern.compile("\\{\\{\\s*(\\w+)\\s*}}"); // {{ var }}
+    private static final Pattern variablePattern = Pattern.compile("\\{\\{\\s*(\\w+)\\s*}}"); // {{ var }}
 
     private final Map<String, Supplier<String>> bindings = new HashMap<>();
 

@@ -17,10 +17,9 @@
 
 package io.aiven.kafka.connect.common.config;
 
-import org.apache.kafka.connect.sink.SinkRecord;
-
 import java.io.IOException;
 import java.io.OutputStream;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 public interface OutputFieldWriter {
 

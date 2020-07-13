@@ -17,23 +17,21 @@
 
 package io.aiven.kafka.connect.s3;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 class Version {
-    private static final Logger log = LoggerFactory.getLogger(Version.class);
-
-    private static final String PROPERTIES_FILENAME = "aiven-kafka-connect-s3-version.properties";
-
     static final String VERSION;
+    private static final Logger log = LoggerFactory.getLogger(Version.class);
+    private static final String PROPERTIES_FILENAME = "aiven-kafka-connect-s3-version.properties";
 
     static {
         final Properties props = new Properties();
         try (final InputStream resourceStream =
-                     Version.class.getClassLoader().getResourceAsStream(PROPERTIES_FILENAME)) {
+                 Version.class.getClassLoader().getResourceAsStream(PROPERTIES_FILENAME)) {
             props.load(resourceStream);
         } catch (final Exception e) {
             log.warn("Error while loading {}: {}", PROPERTIES_FILENAME, e.getMessage());

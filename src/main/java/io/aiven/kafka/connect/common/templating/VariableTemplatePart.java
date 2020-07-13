@@ -28,15 +28,15 @@ public class VariableTemplatePart implements TemplatePart {
     private final String originalPlaceholder;
 
     protected VariableTemplatePart(
-            final String variableName,
-            final String originalPlaceholder) {
+        final String variableName,
+        final String originalPlaceholder) {
         this(variableName, Parameter.EMPTY, originalPlaceholder);
     }
 
     protected VariableTemplatePart(
-            final String variableName,
-            final Parameter parameter,
-            final String originalPlaceholder) {
+        final String variableName,
+        final Parameter parameter,
+        final String originalPlaceholder) {
         this.variableName = variableName;
         this.parameter = parameter;
         this.originalPlaceholder = originalPlaceholder;
@@ -57,7 +57,7 @@ public class VariableTemplatePart implements TemplatePart {
     public static final class Parameter {
 
         public static final Parameter EMPTY =
-                new Parameter("__EMPTY__", "__NO_VALUE__");
+            new Parameter("__EMPTY__", "__NO_VALUE__");
 
         private final String name;
 
@@ -66,6 +66,16 @@ public class VariableTemplatePart implements TemplatePart {
         private Parameter(final String name, final String value) {
             this.name = name;
             this.value = value;
+        }
+
+        public static Parameter of(final String name, final String value) {
+            if (Objects.isNull(name) && Objects.isNull(value)) {
+                return Parameter.EMPTY;
+            } else {
+                Objects.requireNonNull(name, "name has not been set");
+                Objects.requireNonNull(value, "value has not been set");
+                return new Parameter(name, value);
+            }
         }
 
         public boolean isEmpty() {
@@ -82,16 +92,6 @@ public class VariableTemplatePart implements TemplatePart {
 
         public final Boolean asBoolean() {
             return Boolean.parseBoolean(value);
-        }
-
-        public static Parameter of(final String name, final String value) {
-            if (Objects.isNull(name) && Objects.isNull(value)) {
-                return Parameter.EMPTY;
-            } else {
-                Objects.requireNonNull(name, "name has not been set");
-                Objects.requireNonNull(value, "value has not been set");
-                return new Parameter(name, value);
-            }
         }
 
     }

@@ -17,21 +17,29 @@
 
 package io.aiven.kafka.connect.common.config;
 
+import com.amazonaws.regions.Regions;
+import io.aiven.kafka.connect.common.config.validators.FileCompressionTypeValidator;
+import io.aiven.kafka.connect.common.config.validators.NonEmptyPassword;
+import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
+import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
+import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
+import io.aiven.kafka.connect.common.config.validators.UrlValidator;
+import io.aiven.kafka.connect.common.templating.Template;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import io.aiven.kafka.connect.common.config.validators.*;
-import io.aiven.kafka.connect.common.templating.Template;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
-
-import com.amazonaws.regions.Regions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,40 +89,30 @@ public class S3SinkConfig extends AbstractConfig {
             add(OUTPUT_FIELD_NAME_HEADERS);
         }
     };
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
-
     public static final String VERSION_FILE = "aiven-kafka-connect-s3-version.properties";
-
-    // FIXME since we support so far both old style and new style of property names
-    //      Importance was set to medium,
-    //      as soon we will migrate to new values it must be set to HIGH
-    //      same for default value
-    private static final String GROUP_AWS = "AWS";
-
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
     public static final String AWS_S3_ENDPOINT_CONFIG = "aws.s3.endpoint";
     public static final String AWS_S3_PREFIX_CONFIG = "aws.s3.prefix";
     public static final String AWS_S3_REGION_CONFIG = "aws.s3.region";
-
-    private static final String GROUP_FILE = "File";
-
     public static final String FILE_NAME_PREFIX_CONFIG = "file.name.prefix";
     public static final String FILE_NAME_TEMPLATE_CONFIG = "file.name.template";
     public static final String FILE_COMPRESSION_TYPE_CONFIG = "file.compression.type";
     public static final String FILE_MAX_RECORDS = "file.max.records";
     public static final String FILE_NAME_TIMESTAMP_TIMEZONE = "file.name.timestamp.timezone";
     public static final String FILE_NAME_TIMESTAMP_SOURCE = "file.name.timestamp.source";
-
-    private static final String GROUP_FORMAT = "Format";
-
     public static final String FORMAT_OUTPUT_FIELDS_CONFIG = "format.output.fields";
     public static final String FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG = "format.output.fields.value.encoding";
-
     public static final String NAME_CONFIG = "name";
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
+    // FIXME since we support so far both old style and new style of property names
+    //      Importance was set to medium,
+    //      as soon we will migrate to new values it must be set to HIGH
+    //      same for default value
+    private static final String GROUP_AWS = "AWS";
+    private static final String GROUP_FILE = "File";
+    private static final String GROUP_FORMAT = "Format";
     private static final String DEFAULT_FILENAME_TEMPLATE = "{{topic}}-{{partition}}-{{start_offset}}";
 
     public S3SinkConfig(final Map<String, String> originals) {
@@ -216,22 +214,22 @@ public class S3SinkConfig extends AbstractConfig {
     private static void addFileConfigGroup(final ConfigDef configDef) {
         int fileGroupCounter = 0;
         final String supportedCompressionTypes = CompressionType.names().stream()
-                .map(f -> "'" + f + "'")
-                .collect(Collectors.joining(", "));
+            .map(f -> "'" + f + "'")
+            .collect(Collectors.joining(", "));
 
         configDef.define(
-                FILE_COMPRESSION_TYPE_CONFIG,
-                ConfigDef.Type.STRING,
-                null,
-                new FileCompressionTypeValidator(),
-                ConfigDef.Importance.MEDIUM,
-                "The compression type used for files put on AWS. "
-                        + "The supported values are: " + supportedCompressionTypes + ".",
-                GROUP_FILE,
-                fileGroupCounter,
-                ConfigDef.Width.NONE,
-                FILE_COMPRESSION_TYPE_CONFIG,
-                FixedSetRecommender.ofSupportedValues(CompressionType.names())
+            FILE_COMPRESSION_TYPE_CONFIG,
+            ConfigDef.Type.STRING,
+            null,
+            new FileCompressionTypeValidator(),
+            ConfigDef.Importance.MEDIUM,
+            "The compression type used for files put on AWS. "
+                + "The supported values are: " + supportedCompressionTypes + ".",
+            GROUP_FILE,
+            fileGroupCounter,
+            ConfigDef.Width.NONE,
+            FILE_COMPRESSION_TYPE_CONFIG,
+            FixedSetRecommender.ofSupportedValues(CompressionType.names())
         );
     }
 
@@ -239,49 +237,49 @@ public class S3SinkConfig extends AbstractConfig {
         int formatGroupCounter = 0;
 
         final String supportedOutputFields = OutputFieldType.names().stream()
-                .map(f -> "'" + f + "'")
-                .collect(Collectors.joining(", "));
+            .map(f -> "'" + f + "'")
+            .collect(Collectors.joining(", "));
 
         configDef.define(
-                FORMAT_OUTPUT_FIELDS_CONFIG,
-                ConfigDef.Type.LIST,
-                null,
-                new OutputFieldsValidator(),
-                ConfigDef.Importance.MEDIUM,
-                "Fields to put into output files. "
-                        + "The supported values are: " + supportedOutputFields + ".",
-                GROUP_FORMAT,
-                formatGroupCounter++,
-                ConfigDef.Width.NONE,
-                FORMAT_OUTPUT_FIELDS_CONFIG,
-                FixedSetRecommender.ofSupportedValues(OutputFieldType.names())
+            FORMAT_OUTPUT_FIELDS_CONFIG,
+            ConfigDef.Type.LIST,
+            null,
+            new OutputFieldsValidator(),
+            ConfigDef.Importance.MEDIUM,
+            "Fields to put into output files. "
+                + "The supported values are: " + supportedOutputFields + ".",
+            GROUP_FORMAT,
+            formatGroupCounter++,
+            ConfigDef.Width.NONE,
+            FORMAT_OUTPUT_FIELDS_CONFIG,
+            FixedSetRecommender.ofSupportedValues(OutputFieldType.names())
         );
 
         final String supportedValueFieldEncodingTypes = CompressionType.names().stream()
-                .map(f -> "'" + f + "'")
-                .collect(Collectors.joining(", "));
+            .map(f -> "'" + f + "'")
+            .collect(Collectors.joining(", "));
 
         configDef.define(
-                FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG,
-                ConfigDef.Type.STRING,
-                OutputFieldEncodingType.BASE64.name,
-                (name, value) -> {
-                    assert value instanceof String;
-                    final String valueStr = (String) value;
-                    if (!OutputFieldEncodingType.names().contains(valueStr)) {
-                        throw new ConfigException(
-                                FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG, valueStr,
-                                "supported values are: " + supportedValueFieldEncodingTypes);
-                    }
-                },
-                ConfigDef.Importance.MEDIUM,
-                "The type of encoding for the value field. "
-                        + "The supported values are: " + supportedOutputFields + ".",
-                GROUP_FORMAT,
-                formatGroupCounter,
-                ConfigDef.Width.NONE,
-                FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG,
-                FixedSetRecommender.ofSupportedValues(OutputFieldEncodingType.names())
+            FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG,
+            ConfigDef.Type.STRING,
+            OutputFieldEncodingType.BASE64.name,
+            (name, value) -> {
+                assert value instanceof String;
+                final String valueStr = (String) value;
+                if (!OutputFieldEncodingType.names().contains(valueStr)) {
+                    throw new ConfigException(
+                        FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG, valueStr,
+                        "supported values are: " + supportedValueFieldEncodingTypes);
+                }
+            },
+            ConfigDef.Importance.MEDIUM,
+            "The type of encoding for the value field. "
+                + "The supported values are: " + supportedOutputFields + ".",
+            GROUP_FORMAT,
+            formatGroupCounter,
+            ConfigDef.Width.NONE,
+            FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG,
+            FixedSetRecommender.ofSupportedValues(OutputFieldEncodingType.names())
         );
     }
 
@@ -289,167 +287,167 @@ public class S3SinkConfig extends AbstractConfig {
         int timestampGroupCounter = 0;
 
         configDef.define(
-                TIMESTAMP_TIMEZONE,
-                Type.STRING,
-                ZoneOffset.UTC.toString(),
-                new TimeZoneValidator(),
-                Importance.LOW,
-                "Specifies the timezone in which the dates and time for the timestamp variable will be treated. "
-                        + "Use standard shot and long names. Default is UTC",
-                GROUP_FILE,
-                timestampGroupCounter++,
-                ConfigDef.Width.SHORT,
-                TIMESTAMP_TIMEZONE
+            TIMESTAMP_TIMEZONE,
+            Type.STRING,
+            ZoneOffset.UTC.toString(),
+            new TimeZoneValidator(),
+            Importance.LOW,
+            "Specifies the timezone in which the dates and time for the timestamp variable will be treated. "
+                + "Use standard shot and long names. Default is UTC",
+            GROUP_FILE,
+            timestampGroupCounter++,
+            ConfigDef.Width.SHORT,
+            TIMESTAMP_TIMEZONE
         );
 
         configDef.define(
-                TIMESTAMP_SOURCE,
-                Type.STRING,
-                TimestampSource.Type.WALLCLOCK.name(),
-                new TimestampSourceValidator(),
-                Importance.LOW,
-                "Specifies the the timestamp variable source. Default is wall-clock.",
-                GROUP_FILE,
-                timestampGroupCounter,
-                ConfigDef.Width.SHORT,
-                TIMESTAMP_SOURCE
+            TIMESTAMP_SOURCE,
+            Type.STRING,
+            TimestampSource.Type.WALLCLOCK.name(),
+            new TimestampSourceValidator(),
+            Importance.LOW,
+            "Specifies the the timestamp variable source. Default is wall-clock.",
+            GROUP_FILE,
+            timestampGroupCounter,
+            ConfigDef.Width.SHORT,
+            TIMESTAMP_SOURCE
         );
     }
 
     private static void addDeprecatedConfiguration(final ConfigDef configDef) {
         configDef.define(
-                AWS_ACCESS_KEY_ID,
-                Type.PASSWORD,
-                null,
-                new NonEmptyPassword() {
-                    @Override
-                    public void ensureValid(final String name, final Object value) {
-                        LOGGER.info(AWS_ACCESS_KEY_ID
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, value);
-                    }
-                },
-                Importance.MEDIUM,
-                "AWS Access Key ID"
+            AWS_ACCESS_KEY_ID,
+            Type.PASSWORD,
+            null,
+            new NonEmptyPassword() {
+                @Override
+                public void ensureValid(final String name, final Object value) {
+                    LOGGER.info(AWS_ACCESS_KEY_ID
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, value);
+                }
+            },
+            Importance.MEDIUM,
+            "AWS Access Key ID"
         );
 
         configDef.define(
-                AWS_SECRET_ACCESS_KEY,
-                Type.PASSWORD,
-                null,
-                new NonEmptyPassword() {
-                    @Override
-                    public void ensureValid(final String name, final Object value) {
-                        LOGGER.info(AWS_SECRET_ACCESS_KEY
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, value);
-                    }
-                },
-                Importance.MEDIUM,
-                "AWS Secret Access Key"
+            AWS_SECRET_ACCESS_KEY,
+            Type.PASSWORD,
+            null,
+            new NonEmptyPassword() {
+                @Override
+                public void ensureValid(final String name, final Object value) {
+                    LOGGER.info(AWS_SECRET_ACCESS_KEY
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, value);
+                }
+            },
+            Importance.MEDIUM,
+            "AWS Secret Access Key"
         );
 
         configDef.define(
-                AWS_S3_BUCKET,
-                Type.STRING,
-                null,
-                new ConfigDef.NonEmptyString() {
-                    @Override
-                    public void ensureValid(final String name, final Object o) {
-                        LOGGER.info(AWS_S3_BUCKET
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, o);
-                    }
-                },
-                Importance.MEDIUM,
-                "AWS S3 Bucket name"
+            AWS_S3_BUCKET,
+            Type.STRING,
+            null,
+            new ConfigDef.NonEmptyString() {
+                @Override
+                public void ensureValid(final String name, final Object o) {
+                    LOGGER.info(AWS_S3_BUCKET
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, o);
+                }
+            },
+            Importance.MEDIUM,
+            "AWS S3 Bucket name"
         );
 
         configDef.define(
-                AWS_S3_ENDPOINT,
-                Type.STRING,
-                null,
-                new UrlValidator() {
-                    @Override
-                    public void ensureValid(final String name, final Object o) {
-                        LOGGER.info(AWS_S3_ENDPOINT
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, o);
-                    }
-                },
-                Importance.LOW,
-                "Explicit AWS S3 Endpoint Address, mainly for testing"
+            AWS_S3_ENDPOINT,
+            Type.STRING,
+            null,
+            new UrlValidator() {
+                @Override
+                public void ensureValid(final String name, final Object o) {
+                    LOGGER.info(AWS_S3_ENDPOINT
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, o);
+                }
+            },
+            Importance.LOW,
+            "Explicit AWS S3 Endpoint Address, mainly for testing"
         );
 
         configDef.define(
-                AWS_S3_REGION,
-                Type.STRING,
-                null,
-                new AwsRegionValidator() {
-                    @Override
-                    public void ensureValid(final String name, final Object o) {
-                        LOGGER.info(AWS_S3_REGION
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, o);
-                    }
-                },
-                Importance.MEDIUM,
-                "AWS S3 Region, e.g. us-east-1"
+            AWS_S3_REGION,
+            Type.STRING,
+            null,
+            new AwsRegionValidator() {
+                @Override
+                public void ensureValid(final String name, final Object o) {
+                    LOGGER.info(AWS_S3_REGION
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, o);
+                }
+            },
+            Importance.MEDIUM,
+            "AWS S3 Region, e.g. us-east-1"
         );
 
         configDef.define(
-                AWS_S3_PREFIX,
-                Type.STRING,
-                null,
-                new ConfigDef.NonEmptyString() {
-                    @Override
-                    public void ensureValid(final String name, final Object o) {
-                        LOGGER.info(AWS_S3_PREFIX
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, o);
-                    }
-                },
-                Importance.MEDIUM,
-                "Prefix for stored objects, e.g. cluster-1/"
+            AWS_S3_PREFIX,
+            Type.STRING,
+            null,
+            new ConfigDef.NonEmptyString() {
+                @Override
+                public void ensureValid(final String name, final Object o) {
+                    LOGGER.info(AWS_S3_PREFIX
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, o);
+                }
+            },
+            Importance.MEDIUM,
+            "Prefix for stored objects, e.g. cluster-1/"
         );
 
         configDef.define(
-                OUTPUT_FIELDS,
-                Type.LIST,
-                null,
-                new OutputFieldsValidator() {
-                    @Override
-                    public void ensureValid(final String name, final Object value) {
-                        LOGGER.info(OUTPUT_FIELDS
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, value);
-                    }
-                },
-                Importance.MEDIUM,
-                "Output fields. A comma separated list of one or more: "
-                        + OUTPUT_FIELD_NAME_KEY + ", "
-                        + OUTPUT_FIELD_NAME_OFFSET + ", "
-                        + OUTPUT_FIELD_NAME_TIMESTAMP + ", "
-                        + OUTPUT_FIELD_NAME_VALUE + ", "
-                        + OUTPUT_FIELD_NAME_HEADERS
+            OUTPUT_FIELDS,
+            Type.LIST,
+            null,
+            new OutputFieldsValidator() {
+                @Override
+                public void ensureValid(final String name, final Object value) {
+                    LOGGER.info(OUTPUT_FIELDS
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, value);
+                }
+            },
+            Importance.MEDIUM,
+            "Output fields. A comma separated list of one or more: "
+                + OUTPUT_FIELD_NAME_KEY + ", "
+                + OUTPUT_FIELD_NAME_OFFSET + ", "
+                + OUTPUT_FIELD_NAME_TIMESTAMP + ", "
+                + OUTPUT_FIELD_NAME_VALUE + ", "
+                + OUTPUT_FIELD_NAME_HEADERS
         );
 
         configDef.define(
-                OUTPUT_COMPRESSION,
-                Type.STRING,
-                null,
-                new FileCompressionTypeValidator() {
-                    @Override
-                    public void ensureValid(final String name, final Object value) {
-                        LOGGER.info(OUTPUT_COMPRESSION
-                                + " property is deprecated please read documentation for the new name");
-                        super.ensureValid(name, value);
-                    }
-                },
-                Importance.MEDIUM,
-                "Output compression. Valid values are: "
-                        + OUTPUT_COMPRESSION_TYPE_GZIP + " and "
-                        + OUTPUT_COMPRESSION_TYPE_NONE
+            OUTPUT_COMPRESSION,
+            Type.STRING,
+            null,
+            new FileCompressionTypeValidator() {
+                @Override
+                public void ensureValid(final String name, final Object value) {
+                    LOGGER.info(OUTPUT_COMPRESSION
+                        + " property is deprecated please read documentation for the new name");
+                    super.ensureValid(name, value);
+                }
+            },
+            Importance.MEDIUM,
+            "Output compression. Valid values are: "
+                + OUTPUT_COMPRESSION_TYPE_GZIP + " and "
+                + OUTPUT_COMPRESSION_TYPE_NONE
         );
     }
 
@@ -479,7 +477,7 @@ public class S3SinkConfig extends AbstractConfig {
                     AWS_S3_BUCKET)
             );
         } else if (Objects.isNull(getString(AWS_S3_PREFIX_CONFIG))
-                && Objects.isNull(getString(AWS_S3_PREFIX))) {
+            && Objects.isNull(getString(AWS_S3_PREFIX))) {
             throw new ConfigException(
                 String.format(
                     "Neither %s nor %s properties have been set",
@@ -550,11 +548,11 @@ public class S3SinkConfig extends AbstractConfig {
 
     public List<OutputField> getOutputFields() {
         if (Objects.nonNull(getList(FORMAT_OUTPUT_FIELDS_CONFIG))
-                && get(FORMAT_OUTPUT_FIELDS_CONFIG) != ConfigDef.NO_DEFAULT_VALUE) {
+            && get(FORMAT_OUTPUT_FIELDS_CONFIG) != ConfigDef.NO_DEFAULT_VALUE) {
             return getOutputFields(FORMAT_OUTPUT_FIELDS_CONFIG);
         }
         if (Objects.nonNull(getList(OUTPUT_FIELDS))
-                && get(OUTPUT_FIELDS) != ConfigDef.NO_DEFAULT_VALUE) {
+            && get(OUTPUT_FIELDS) != ConfigDef.NO_DEFAULT_VALUE) {
             return getOutputFields(OUTPUT_FIELDS);
         }
         return List.of(new OutputField(OutputFieldType.VALUE, OutputFieldEncodingType.BASE64));
@@ -562,15 +560,15 @@ public class S3SinkConfig extends AbstractConfig {
 
     public List<OutputField> getOutputFields(String format) {
         return getList(format).stream()
-                .map(fieldName -> {
-                    final var type = OutputFieldType.forName(fieldName);
-                    final var encoding =
-                            (type == OutputFieldType.KEY || type == OutputFieldType.VALUE)
-                                    ? getOutputFieldEncodingType()
-                                    : OutputFieldEncodingType.NONE;
-                    return new OutputField(type, encoding);
-                })
-                .collect(Collectors.toUnmodifiableList());
+            .map(fieldName -> {
+                final var type = OutputFieldType.forName(fieldName);
+                final var encoding =
+                    (type == OutputFieldType.KEY || type == OutputFieldType.VALUE)
+                        ? getOutputFieldEncodingType()
+                        : OutputFieldEncodingType.NONE;
+                return new OutputField(type, encoding);
+            })
+            .collect(Collectors.toUnmodifiableList());
     }
 
     public OutputFieldEncodingType getOutputFieldEncodingType() {
@@ -609,27 +607,6 @@ public class S3SinkConfig extends AbstractConfig {
         );
     }
 
-    protected static class AwsRegionValidator implements ConfigDef.Validator {
-        private static final String SUPPORTED_AWS_REGIONS =
-            Arrays.stream(Regions.values())
-                .map(Regions::getName)
-                .collect(Collectors.joining(", "));
-
-        @Override
-        public void ensureValid(final String name, final Object value) {
-            if (Objects.nonNull(value)) {
-                final String valueStr = (String) value;
-                try {
-                    Regions.fromName(valueStr);
-                } catch (final IllegalArgumentException e) {
-                    throw new ConfigException(
-                        name, valueStr,
-                        "supported values are: " + SUPPORTED_AWS_REGIONS);
-                }
-            }
-        }
-    }
-
     public final String getConnectorName() {
         return originalsStrings().get(NAME_CONFIG);
     }
@@ -660,8 +637,29 @@ public class S3SinkConfig extends AbstractConfig {
 
     public final TimestampSource getFilenameTimestampSource() {
         return TimestampSource.of(
-                getFilenameTimezone(),
-                TimestampSource.Type.of(getString(FILE_NAME_TIMESTAMP_SOURCE))
+            getFilenameTimezone(),
+            TimestampSource.Type.of(getString(FILE_NAME_TIMESTAMP_SOURCE))
         );
+    }
+
+    protected static class AwsRegionValidator implements ConfigDef.Validator {
+        private static final String SUPPORTED_AWS_REGIONS =
+            Arrays.stream(Regions.values())
+                .map(Regions::getName)
+                .collect(Collectors.joining(", "));
+
+        @Override
+        public void ensureValid(final String name, final Object value) {
+            if (Objects.nonNull(value)) {
+                final String valueStr = (String) value;
+                try {
+                    Regions.fromName(valueStr);
+                } catch (final IllegalArgumentException e) {
+                    throw new ConfigException(
+                        name, valueStr,
+                        "supported values are: " + SUPPORTED_AWS_REGIONS);
+                }
+            }
+        }
     }
 }

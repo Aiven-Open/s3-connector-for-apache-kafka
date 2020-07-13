@@ -51,7 +51,7 @@ public class AivenKafkaConnectS3SinkConnector extends Connector {
             S3SinkConfig.AWS_SECRET_ACCESS_KEY,
             S3SinkConfig.AWS_S3_BUCKET
         };
-        for (final String pk: mandatoryKeys) {
+        for (final String pk : mandatoryKeys) {
             if (properties.get(pk) == null) {
                 throw new ConnectException("Mandatory parameter '" + pk + "' is missing.");
             }
