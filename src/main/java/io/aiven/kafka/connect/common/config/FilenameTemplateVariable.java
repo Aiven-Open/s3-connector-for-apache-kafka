@@ -17,10 +17,11 @@
 
 package io.aiven.kafka.connect.common.config;
 
-import com.google.common.collect.ImmutableSet;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
 
 public enum FilenameTemplateVariable {
     TOPIC("topic"),

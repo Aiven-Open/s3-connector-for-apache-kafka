@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
+
 import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.header.Header;

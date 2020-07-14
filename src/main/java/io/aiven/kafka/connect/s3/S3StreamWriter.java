@@ -17,20 +17,6 @@
 
 package io.aiven.kafka.connect.s3;
 
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatKafkaOffset;
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
-
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import io.aiven.kafka.connect.common.config.CompressionType;
-import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
-import io.aiven.kafka.connect.common.config.S3SinkConfig;
-import io.aiven.kafka.connect.common.config.Variables;
-import io.aiven.kafka.connect.common.output.OutputWriter;
-import io.aiven.kafka.connect.common.templating.Template;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
@@ -41,11 +27,28 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.zip.GZIPOutputStream;
+
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
+
+import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.config.Variables;
+import io.aiven.kafka.connect.common.output.OutputWriter;
+import io.aiven.kafka.connect.common.templating.Template;
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatKafkaOffset;
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
 
 public class S3StreamWriter {
 

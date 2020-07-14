@@ -19,6 +19,7 @@ package io.aiven.kafka.connect.common.grouper;
 
 import java.util.List;
 import java.util.Map;
+
 import org.apache.kafka.connect.sink.SinkRecord;
 
 /**

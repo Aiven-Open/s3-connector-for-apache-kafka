@@ -17,16 +17,19 @@
 
 package io.aiven.kafka.connect.s3;
 
-import io.aiven.kafka.connect.common.config.S3SinkConfig;
-import io.aiven.kafka.connect.common.templating.Pair;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.templating.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

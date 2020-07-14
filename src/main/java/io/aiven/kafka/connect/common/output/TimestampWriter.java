@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+
 import org.apache.kafka.connect.sink.SinkRecord;
 
 public final class TimestampWriter implements OutputFieldWriter {

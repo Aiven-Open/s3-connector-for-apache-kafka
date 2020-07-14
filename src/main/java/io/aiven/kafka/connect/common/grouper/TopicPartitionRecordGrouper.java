@@ -17,13 +17,6 @@
 
 package io.aiven.kafka.connect.common.grouper;
 
-import com.google.common.collect.ImmutableMap;
-
-import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
-import io.aiven.kafka.connect.common.config.TimestampSource;
-import io.aiven.kafka.connect.common.templating.Template;
-import io.aiven.kafka.connect.common.templating.VariableTemplatePart.Parameter;
-
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,6 +28,13 @@ import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.sink.SinkRecord;
+
+import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
+import io.aiven.kafka.connect.common.config.TimestampSource;
+import io.aiven.kafka.connect.common.templating.Template;
+import io.aiven.kafka.connect.common.templating.VariableTemplatePart.Parameter;
+
+import com.google.common.collect.ImmutableMap;
 
 /**
  * A {@link RecordGrouper} that groups records by topic and partition.

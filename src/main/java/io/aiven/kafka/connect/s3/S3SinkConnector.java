@@ -17,14 +17,17 @@
 
 package io.aiven.kafka.connect.s3;
 
-import io.aiven.kafka.connect.common.config.S3SinkConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
+
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

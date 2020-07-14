@@ -17,18 +17,20 @@
 
 package io.aiven.kafka.connect.common.grouper;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
-import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
-import io.aiven.kafka.connect.common.config.S3SinkConfig;
-import io.aiven.kafka.connect.common.templating.Pair;
-import io.aiven.kafka.connect.common.templating.Template;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
+import io.aiven.kafka.connect.common.config.S3SinkConfig;
+import io.aiven.kafka.connect.common.templating.Pair;
+import io.aiven.kafka.connect.common.templating.Template;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 
 public final class RecordGrouperFactory {
 

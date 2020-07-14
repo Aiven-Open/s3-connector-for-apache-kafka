@@ -17,6 +17,10 @@
 
 package io.aiven.kafka.connect.s3;
 
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
@@ -24,9 +28,6 @@ import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class S3MultipartUpload {
 

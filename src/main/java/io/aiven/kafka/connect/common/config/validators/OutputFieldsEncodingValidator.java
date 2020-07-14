@@ -17,9 +17,10 @@
 
 package io.aiven.kafka.connect.common.config.validators;
 
-import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+
+import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
 
 public class OutputFieldsEncodingValidator implements ConfigDef.Validator {
 

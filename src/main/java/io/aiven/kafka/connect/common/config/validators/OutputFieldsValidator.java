@@ -17,12 +17,14 @@
 
 package io.aiven.kafka.connect.common.config.validators;
 
-import io.aiven.kafka.connect.common.config.OutputField;
-import io.aiven.kafka.connect.common.config.OutputFieldType;
 import java.util.List;
 import java.util.Objects;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+
+import io.aiven.kafka.connect.common.config.OutputField;
+import io.aiven.kafka.connect.common.config.OutputFieldType;
 
 public class OutputFieldsValidator implements ConfigDef.Validator {
 

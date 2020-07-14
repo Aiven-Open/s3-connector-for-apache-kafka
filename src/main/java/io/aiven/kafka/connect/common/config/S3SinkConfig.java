@@ -17,14 +17,6 @@
 
 package io.aiven.kafka.connect.common.config;
 
-import com.amazonaws.regions.Regions;
-import io.aiven.kafka.connect.common.config.validators.FileCompressionTypeValidator;
-import io.aiven.kafka.connect.common.config.validators.NonEmptyPassword;
-import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
-import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
-import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
-import io.aiven.kafka.connect.common.config.validators.UrlValidator;
-import io.aiven.kafka.connect.common.templating.Template;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Arrays;
@@ -34,12 +26,23 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
+
+import io.aiven.kafka.connect.common.config.validators.FileCompressionTypeValidator;
+import io.aiven.kafka.connect.common.config.validators.NonEmptyPassword;
+import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
+import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
+import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
+import io.aiven.kafka.connect.common.config.validators.UrlValidator;
+import io.aiven.kafka.connect.common.templating.Template;
+
+import com.amazonaws.regions.Regions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -212,7 +215,7 @@ public class S3SinkConfig extends AbstractConfig {
     }
 
     private static void addFileConfigGroup(final ConfigDef configDef) {
-        int fileGroupCounter = 0;
+        final int fileGroupCounter = 0;
         final String supportedCompressionTypes = CompressionType.names().stream()
             .map(f -> "'" + f + "'")
             .collect(Collectors.joining(", "));
@@ -558,7 +561,7 @@ public class S3SinkConfig extends AbstractConfig {
         return List.of(new OutputField(OutputFieldType.VALUE, OutputFieldEncodingType.BASE64));
     }
 
-    public List<OutputField> getOutputFields(String format) {
+    public List<OutputField> getOutputFields(final String format) {
         return getList(format).stream()
             .map(fieldName -> {
                 final var type = OutputFieldType.forName(fieldName);
