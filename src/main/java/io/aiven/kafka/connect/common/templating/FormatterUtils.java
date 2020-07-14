@@ -27,12 +27,13 @@ import io.aiven.kafka.connect.common.config.TimestampSource;
 import io.aiven.kafka.connect.common.templating.VariableTemplatePart.Parameter;
 
 public class FormatterUtils {
-    public static final BiFunction<SinkRecord, Parameter, String> formatKafkaOffset =
+    public static final BiFunction<SinkRecord, Parameter, String> FORMAT_KAFKA_OFFSET =
         (sinkRecord, usePaddingParameter) ->
             usePaddingParameter.asBoolean()
                 ? String.format("%020d", sinkRecord.kafkaOffset())
                 : Long.toString(sinkRecord.kafkaOffset());
-    public static final BiFunction<TimestampSource, Parameter, String> formatTimestamp =
+
+    public static final BiFunction<TimestampSource, Parameter, String> FORMAT_TIMESTAMP =
         new BiFunction<>() {
             private final Map<String, DateTimeFormatter> fomatterMap =
                 Map.of(
@@ -48,31 +49,4 @@ public class FormatterUtils {
             }
 
         };
-
-    public static String formatKafkaOffset(final SinkRecord record) {
-        return formatKafkaOffset.apply(record, Parameter.of("padding", "true"));
-    }
-
-//    public static Function<Parameter, String> createKafkaOffsetBinding(final SinkRecord headRecord) {
-//        return usePaddingParameter -> usePaddingParameter.asBoolean()
-//                ? String.format("%020d", headRecord.kafkaOffset())
-//                : Long.toString(headRecord.kafkaOffset());
-//    }
-
-//    public static Function<Parameter, String> createTimestampBinding(final TimestampSource timestampSource) {
-//        return new Function<>() {
-//            private final Map<String, DateTimeFormatter> timestampFormatterMap =
-//                    ImmutableMap.of(
-//                            "YYYY", DateTimeFormatter.ofPattern("YYYY"),
-//                            "MM", DateTimeFormatter.ofPattern("MM"),
-//                            "dd", DateTimeFormatter.ofPattern("dd"),
-//                            "HH", DateTimeFormatter.ofPattern("HH")
-//                    );
-//
-//            @Override
-//            public String apply(final Parameter parameter) {
-//                return timestampSource.time().format(timestampFormatterMap.get(parameter.value()));
-//            }
-//        };
-//    }
 }

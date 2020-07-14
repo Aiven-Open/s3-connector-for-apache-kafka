@@ -38,6 +38,7 @@ import io.aiven.kafka.connect.common.config.S3SinkConfig;
 import io.aiven.kafka.connect.common.config.Variables;
 import io.aiven.kafka.connect.common.output.OutputWriter;
 import io.aiven.kafka.connect.common.templating.Template;
+import io.aiven.kafka.connect.common.templating.VariableTemplatePart;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -47,8 +48,8 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatKafkaOffset;
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.formatTimestamp;
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.FORMAT_KAFKA_OFFSET;
+import static io.aiven.kafka.connect.common.templating.FormatterUtils.FORMAT_TIMESTAMP;
 
 public class S3StreamWriter {
 
@@ -118,7 +119,7 @@ public class S3StreamWriter {
                 .instance()
                 .bindVariable(
                     Variables.TIMESTAMP.name,
-                    tsParameter -> formatTimestamp.apply(config.getTimestampSource(), tsParameter)
+                    parameter -> FORMAT_TIMESTAMP.apply(config.getTimestampSource(), parameter)
                 )
                 .bindVariable(
                     Variables.PARTITION.name,
@@ -126,7 +127,7 @@ public class S3StreamWriter {
                 )
                 .bindVariable(
                     Variables.START_OFFSET.name,
-                    parameter -> formatKafkaOffset.apply(record, parameter)
+                    parameter -> FORMAT_KAFKA_OFFSET.apply(record, parameter)
                 )
                 .bindVariable(FilenameTemplateVariable.TOPIC.name, record::topic)
                 .bindVariable(
@@ -143,7 +144,7 @@ public class S3StreamWriter {
                 "%s-%s-%s",
                 record.topic(),
                 record.kafkaPartition(),
-                formatKafkaOffset(record));
+                FORMAT_KAFKA_OFFSET.apply(record, VariableTemplatePart.Parameter.of("padding", "true")));
         final var fullKey = config.getCompressionType() == CompressionType.GZIP ? prefix + key + ".gz" : prefix + key;
         final var awsOutputStream = new S3OutputStream(s3Client, config.getAwsS3BucketName(), fullKey);
         try {

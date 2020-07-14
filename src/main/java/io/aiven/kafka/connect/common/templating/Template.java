@@ -88,14 +88,12 @@ public final class Template {
     }
 
     public final class Instance {
-        private final Map<String, Function<VariableTemplatePart.Parameter, String>> bindings =
-            new HashMap<>();
+        private final Map<String, Function<VariableTemplatePart.Parameter, String>> bindings = new HashMap<>();
 
         private Instance() {
         }
 
-        public final Instance bindVariable(final String name,
-                                           final Supplier<String> binding) {
+        public final Instance bindVariable(final String name, final Supplier<String> binding) {
             return bindVariable(name, x -> binding.get());
         }
 
