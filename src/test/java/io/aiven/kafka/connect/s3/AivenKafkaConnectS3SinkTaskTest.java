@@ -25,11 +25,18 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
 import java.util.zip.GZIPInputStream;
 
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
@@ -45,6 +52,8 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import io.findify.s3mock.S3Mock;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -132,7 +141,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
         // * Simulate periodical flush() cycle - ensure that data files are written
 
         // Push batch of records
-        Collection<SinkRecord> sinkRecords = createBatchOfRecord(0, 100);
+        final Collection<SinkRecord> sinkRecords = createBatchOfRecord(0, 100);
         task.put(sinkRecords);
 
         assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
@@ -142,16 +151,19 @@ public class AivenKafkaConnectS3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        ConnectHeaders extectedConnectHeaders = createTestHeaders();
+        final ConnectHeaders extectedConnectHeaders = createTestHeaders();
 
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "test-topic-0-0000000000.gz"));
 
-        S3Object s3Object = s3Client.getObject(TEST_BUCKET, "test-topic-0-0000000000.gz");
-        S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3ObjectInputStream)))) {
+        final S3Object s3Object = s3Client.getObject(TEST_BUCKET, "test-topic-0-0000000000.gz");
+        final S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
+        try (final BufferedReader br =
+                     new BufferedReader(
+                             new InputStreamReader(
+                                     new GZIPInputStream(s3ObjectInputStream)))) {
             for (String line; (line = br.readLine()) != null;) {
-                String[] parts = line.split(",");
-                ConnectHeaders actualConnectHeaders = readHeaders(parts[4]);
+                final String[] parts = line.split(",");
+                final ConnectHeaders actualConnectHeaders = readHeaders(parts[4]);
                 assertTrue(headersEquals(actualConnectHeaders, extectedConnectHeaders));
             }
         }
@@ -252,7 +264,7 @@ public class AivenKafkaConnectS3SinkTaskTest {
     private Collection<SinkRecord> createBatchOfRecord(final int offsetFrom, final int offsetTo) {
         final ArrayList<SinkRecord> records = new ArrayList<>();
         for (int offset = offsetFrom; offset < offsetTo; offset++) {
-            ConnectHeaders connectHeaders = createTestHeaders();
+            final ConnectHeaders connectHeaders = createTestHeaders();
             final SinkRecord record = new SinkRecord(
                     "test-topic",
                     0,
@@ -270,13 +282,13 @@ public class AivenKafkaConnectS3SinkTaskTest {
     }
 
     private ConnectHeaders createTestHeaders() {
-        ConnectHeaders connectHeaders = new ConnectHeaders();
+        final ConnectHeaders connectHeaders = new ConnectHeaders();
         connectHeaders.addBytes("test-header-key-1", "test-header-value-1".getBytes(StandardCharsets.UTF_8));
         connectHeaders.addBytes("test-header-key-2", "test-header-value-2".getBytes(StandardCharsets.UTF_8));
         return connectHeaders;
     }
 
-    private ConnectHeaders readHeaders(String s) {
+    private ConnectHeaders readHeaders(final String s) {
         final ConnectHeaders connectHeaders = new ConnectHeaders();
         final String[] headers = s.split(";");
         for (final String header : headers) {
