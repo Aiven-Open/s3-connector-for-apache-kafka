@@ -24,20 +24,17 @@ import java.io.OutputStream;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 
-public class AivenKafkaConnectS3OutputStream extends OutputStream {
+public class S3OutputStream extends OutputStream {
 
-    private AmazonS3 s3Client;
-    private String bucketName;
-    private String keyName;
+    private final AmazonS3 s3Client;
+    private final String bucketName;
+    private final String keyName;
     private byte[] buffer;
     private int bufferLen;
     private int bufferSize;
-    AivenKafkaConnectS3MultipartUpload multipartUpload;
+    private S3MultipartUpload multipartUpload;
 
-    public AivenKafkaConnectS3OutputStream(
-        final AmazonS3 s3Client,
-        final String bucketName,
-        final String keyName) {
+    public S3OutputStream(final AmazonS3 s3Client, final String bucketName, final String keyName) {
         this.s3Client = s3Client;
         this.bucketName = bucketName;
         this.keyName = keyName;
@@ -61,9 +58,7 @@ public class AivenKafkaConnectS3OutputStream extends OutputStream {
     }
 
     @Override
-    public void write(final byte[] data,
-                      final int offset,
-                      final int len) {
+    public void write(final byte[] data, final int offset, final int len) {
         this.expandBuffer(len);
         System.arraycopy(data, offset, this.buffer, this.bufferLen, len);
         this.bufferLen += len;
@@ -87,7 +82,7 @@ public class AivenKafkaConnectS3OutputStream extends OutputStream {
         if (this.bufferLen > 5 * 1024 * 1024) {
             if (this.multipartUpload == null) {
                 this.multipartUpload =
-                    new AivenKafkaConnectS3MultipartUpload(this.s3Client, this.bucketName, this.keyName);
+                    new S3MultipartUpload(this.s3Client, this.bucketName, this.keyName);
             }
             //FIXME use try-resources here
             final InputStream stream = new ByteArrayInputStream(this.buffer, 0, this.bufferLen);
