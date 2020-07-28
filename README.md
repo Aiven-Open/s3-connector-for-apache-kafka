@@ -202,3 +202,7 @@ timestamp.timezone=Europe/Berlin
 # Supports only `wallclock` which is the default value.
 timestamp.source=wallclock
 ```
+
+# License
+
+This project is licensed under the [Apache License, Version 2.0](LICENSE).
