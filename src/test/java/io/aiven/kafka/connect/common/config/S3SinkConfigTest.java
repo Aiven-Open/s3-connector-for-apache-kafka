@@ -35,7 +35,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static io.aiven.kafka.connect.common.templating.FormatterUtils.FORMAT_TIMESTAMP;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
@@ -661,7 +660,7 @@ class S3SinkConfigTest {
             config.getPrefixTemplate()
                 .instance()
                 .bindVariable("timestamp", parameter ->
-                    FORMAT_TIMESTAMP.apply(config.getTimestampSource(), parameter))
+                    FormatterUtils.formatTimestamp.apply(config.getTimestampSource(), parameter))
                 .render();
 
         assertEquals(
