@@ -18,6 +18,7 @@ package io.aiven.kafka.connect.s3;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -46,6 +47,8 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 
+import io.aiven.kafka.connect.common.config.CompressionType;
+
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
@@ -53,12 +56,15 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.github.luben.zstd.ZstdInputStream;
 import io.findify.s3mock.S3Mock;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.xerial.snappy.SnappyInputStream;
 
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
@@ -132,14 +138,17 @@ public class S3SinkTaskTest {
         s3Client.deleteBucket(TEST_BUCKET);
     }
 
-    @Test
-    public void testAivenKafkaConnectS3SinkTaskTest() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "gzip", "snappy", "zstd"})
+    public void testAivenKafkaConnectS3SinkTaskTest(final String compression) throws IOException {
         // Create SinkTask
         final S3SinkTask task = new S3SinkTask();
 
-        properties.put(OUTPUT_COMPRESSION, "gzip");
+        final CompressionType compressionType = CompressionType.forName(compression);
+
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset,headers");
         properties.put(AWS_S3_PREFIX, "aiven--");
+        properties.put(OUTPUT_COMPRESSION, compression);
         task.start(properties);
 
         final TopicPartition tp = new TopicPartition("test-topic", 0);
@@ -152,54 +161,79 @@ public class S3SinkTaskTest {
         final Collection<SinkRecord> sinkRecords = createBatchOfRecord(0, 100);
         task.put(sinkRecords);
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000000" + compressionType.extension()));
 
         // Flush data - this is called by Connect on offset.flush.interval
         final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        final ConnectHeaders extectedConnectHeaders = createTestHeaders();
+        final ConnectHeaders expectedConnectHeaders = createTestHeaders();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000000" + compressionType.extension()));
 
-        final S3Object s3Object = s3Client.getObject(TEST_BUCKET, "aiven--test-topic-0-00000000000000000000.gz");
+        final S3Object s3Object = s3Client.getObject(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000000" + compressionType.extension());
         final S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
-        try (final BufferedReader br =
-                     new BufferedReader(
-                             new InputStreamReader(
-                                     new GZIPInputStream(s3ObjectInputStream)))) {
+        final InputStream inputStream = getCompressedInputStream(s3ObjectInputStream, compressionType);
+        try (final BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             for (String line; (line = br.readLine()) != null;) {
                 final String[] parts = line.split(",");
                 final ConnectHeaders actualConnectHeaders = readHeaders(parts[4]);
-                assertTrue(headersEquals(actualConnectHeaders, extectedConnectHeaders));
+                assertTrue(headersEquals(actualConnectHeaders, expectedConnectHeaders));
             }
         }
 
         // * Verify that we store data on partition unassignment
         task.put(createBatchOfRecord(100, 200));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000100.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000100" + compressionType.extension()));
 
         task.close(tps);
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000100.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000100" + compressionType.extension()));
 
         // * Verify that we store data on SinkTask shutdown
         task.put(createBatchOfRecord(200, 300));
 
-        assertFalse(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000200.gz"));
+        assertFalse(s3Client.doesObjectExist(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000200" + compressionType.extension()));
 
         task.stop();
 
-        assertTrue(s3Client.doesObjectExist(TEST_BUCKET, "aiven--test-topic-0-00000000000000000200.gz"));
+        assertTrue(s3Client.doesObjectExist(TEST_BUCKET,
+            "aiven--test-topic-0-00000000000000000200" + compressionType.extension()));
     }
 
-    @Test
-    public void testS3ConstantPrefix() {
+    private InputStream getCompressedInputStream(
+        final InputStream inputStream,
+        final CompressionType compressionType) throws IOException {
+        Objects.requireNonNull(inputStream, "inputStream cannot be null");
+
+        switch (compressionType) {
+            case ZSTD:
+                return new ZstdInputStream(inputStream);
+            case GZIP:
+                return new GZIPInputStream(inputStream);
+            case SNAPPY:
+                return new SnappyInputStream(inputStream);
+            default:
+                return inputStream;
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "gzip", "snappy", "zstd"})
+    public void testS3ConstantPrefix(final String compression) {
         final S3SinkTask task = new S3SinkTask();
 
-        properties.put(OUTPUT_COMPRESSION, "gzip");
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        properties.put(OUTPUT_COMPRESSION, compression);
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
         properties.put(AWS_S3_PREFIX, "prefix--");
         task.start(properties);
@@ -217,16 +251,19 @@ public class S3SinkTaskTest {
         assertTrue(
             s3Client.doesObjectExist(
                 TEST_BUCKET,
-                "prefix--test-topic-0-00000000000000000000.gz"
+                "prefix--test-topic-0-00000000000000000000" + compressionType.extension()
             )
         );
     }
 
-    @Test
-    public void testS3UtcDatePrefix() {
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "gzip", "snappy", "zstd"})
+    public void testS3UtcDatePrefix(final String compression) {
         final S3SinkTask task = new S3SinkTask();
 
-        properties.put(OUTPUT_COMPRESSION, "gzip");
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        properties.put(OUTPUT_COMPRESSION, compression);
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
         properties.put(AWS_S3_PREFIX, "prefix-{{ utc_date }}--");
         task.start(properties);
@@ -241,18 +278,22 @@ public class S3SinkTaskTest {
         offsets.put(tp, new OffsetAndMetadata(100));
         task.flush(offsets);
 
-        final String expectedFileName = String.format("prefix-%s--test-topic-0-00000000000000000000.gz",
+        final String expectedFileName = String.format(
+            "prefix-%s--test-topic-0-00000000000000000000" + compressionType.extension(),
             ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE));
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));
 
         task.stop();
     }
 
-    @Test
-    public void testS3LocalDatePrefix() {
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "gzip", "snappy", "zstd"})
+    public void testS3LocalDatePrefix(final String compression) {
         final S3SinkTask task = new S3SinkTask();
 
-        properties.put(OUTPUT_COMPRESSION, "gzip");
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        properties.put(OUTPUT_COMPRESSION, compression);
         properties.put(OUTPUT_FIELDS, "value,key,timestamp,offset");
         properties.put(AWS_S3_PREFIX, "prefix-{{ local_date }}--");
         task.start(properties);
@@ -269,7 +310,7 @@ public class S3SinkTaskTest {
 
         final String expectedFileName =
             String.format(
-                "prefix-%s--test-topic-0-00000000000000000000.gz",
+                "prefix-%s--test-topic-0-00000000000000000000" + compressionType.extension(),
                 LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
             );
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET, expectedFileName));

@@ -31,7 +31,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 
-import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.common.config.FormatterUtils;
 import io.aiven.kafka.connect.common.config.Variables;
 import io.aiven.kafka.connect.common.output.OutputWriter;
@@ -43,8 +42,10 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.github.luben.zstd.ZstdOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xerial.snappy.SnappyOutputStream;
 
 public class S3StreamWriter {
 
@@ -140,14 +141,36 @@ public class S3StreamWriter {
                 record.topic(),
                 record.kafkaPartition(),
                 FormatterUtils.formatKafkaOffset.apply(record, VariableTemplatePart.Parameter.of("padding", "true")));
-        final var fullKey = config.getCompressionType() == CompressionType.GZIP ? prefix + key + ".gz" : prefix + key;
+        final var fullKey = prefix + key + config.getCompressionType().extension();
         final var awsOutputStream = new S3OutputStream(s3Client, config.getAwsS3BucketName(), fullKey);
         try {
-            return config.getCompressionType() == CompressionType.GZIP
-                ? new GZIPOutputStream(awsOutputStream)
-                : awsOutputStream;
+            switch (config.getCompressionType()) {
+                case ZSTD:
+                    return new ZstdOutputStream(awsOutputStream);
+                case GZIP:
+                    return new GZIPOutputStream(awsOutputStream);
+                case SNAPPY:
+                    return new SnappyOutputStream(awsOutputStream);
+                default:
+                    return awsOutputStream;
+            }
         } catch (final IOException e) {
             throw new ConnectException(e);
+        }
+    }
+
+    private OutputStream getCompressedStream(final OutputStream outputStream) throws IOException {
+        Objects.requireNonNull(outputStream, "outputStream cannot be null");
+
+        switch (config.getCompressionType()) {
+            case ZSTD:
+                return new ZstdOutputStream(outputStream);
+            case GZIP:
+                return new GZIPOutputStream(outputStream);
+            case SNAPPY:
+                return new SnappyOutputStream(outputStream);
+            default:
+                return outputStream;
         }
     }
 

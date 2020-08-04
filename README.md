@@ -68,7 +68,7 @@ List of deprecated configuration parameters:
 - `aws_s3_region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`.
 - `aws_s3_bucket` - Name of an existing bucket for storing the records. Mandatory.
 - `aws_s3_prefix` - The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
-- `output_compression`- Compression type for output files. Supported algorithms are `gzip` and `none`. Defaults to `gzip`.
+- `output_compression`- Compression type for output files. Supported algorithms are `gzip`, `snappy`, `zstd` and `none`. Defaults to `gzip`.
 - `output_fields` - A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
 
 List of new configuration parameters:
@@ -78,7 +78,7 @@ List of new configuration parameters:
 - `aws.s3.endpoint` - The endpoint configuration (service endpoint & signing region) to be used for requests.
 - `aws.s3.prefix` - The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
 - `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`. 
-- `file.compression.type` - Compression type for output files. Supported algorithms are `gzip` and `none`. Defaults to `gzip`.
+- `file.compression.type` - Compression type for output files. Supported algorithms are `gzip`, `snappy`, `zstd` and `none`. Defaults to `gzip`.
 - `format.output.fields` - A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
 - `format.output.fields.value.encoding` - Controls encoding of `value` field. Possible values are: `base64` and `none`. Defaults: `base64`
 - `timestamp.timezone` - The time zone in which timestamps are represented. Accepts short and long standard names like: `UTC`, `PST`, `ECT`, `Europe/Berlin`, `Europe/Helsinki`, or `America/New_York`. For more information please refer to https://docs.oracle.com/javase/tutorial/datetime/iso/timezones.html. The default is `UTC`.
@@ -189,7 +189,7 @@ aws.s3.bucket.name=my-bucket
 format.output.fields=key,value,offset,timestamp
 
 # The compression type used for files put on GCS.
-# The supported values are: `gzip`, `none`.
+# The supported values are: `gzip`, `snappy`, `zstd`, `none`.
 # Optional, the default is `none`.
 file.compression.type=gzip
 
