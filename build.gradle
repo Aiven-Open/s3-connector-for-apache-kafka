@@ -34,7 +34,7 @@ plugins {
 }
 
 group = "io.aiven"
-version = hasProperty("module_version") ? "$project.module_version" : 'unknown'
+version = System.getenv("RELEASE_VERSION") ?: "0-SNAPSHOT"
 
 repositories {
     mavenLocal()
@@ -67,7 +67,7 @@ ext {
     kafkaVersion = "1.1.0"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
-    aivenConnectCommonsVersion = "0.0.13"
+    aivenConnectCommonsVersion = "0.0.14"
     junitVersion = "5.6.2"
 }
 
@@ -152,4 +152,12 @@ dependencies {
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+}
+
+jar {
+    manifest {
+        attributes(
+                'Version': "$version"
+        )
+    }
 }
