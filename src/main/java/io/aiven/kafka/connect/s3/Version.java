@@ -23,9 +23,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class Version {
-    static final String VERSION;
-    private static final Logger LOGGER = LoggerFactory.getLogger(Version.class);
+    private static final Logger log = LoggerFactory.getLogger(Version.class);
+
     private static final String PROPERTIES_FILENAME = "aiven-kafka-connect-s3-version.properties";
+
+    static final String VERSION;
 
     static {
         final Properties props = new Properties();
@@ -33,7 +35,7 @@ class Version {
                  Version.class.getClassLoader().getResourceAsStream(PROPERTIES_FILENAME)) {
             props.load(resourceStream);
         } catch (final Exception e) {
-            LOGGER.warn("Error while loading {}: {}", PROPERTIES_FILENAME, e.getMessage());
+            log.warn("Error while loading {}: {}", PROPERTIES_FILENAME, e.getMessage());
         }
         VERSION = props.getProperty("version", "unknown").trim();
     }
