@@ -1,0 +1,61 @@
+name: Release Workflow
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag'
+        required: true
+        default: ''
+jobs:
+  build:
+    name: Release v${{ github.event.inputs.tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Bump version and push tag
+        id: create_tag
+        uses: mathieudutour/github-tag-action@v4.5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          create_annotated_tag: true
+      - name: Build with Gradle
+        run: ./gradlew distZip distTar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ github.event.inputs.tag }}
+      - name: Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.tag }}
+          release_name: Release v${{ github.event.inputs.tag }}
+          body: ''
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset zip
+        id: upload-release-asset-zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/distributions/aiven-kafka-connect-s3-${{ github.event.inputs.tag }}.zip
+          asset_name: aiven-kafka-connect-s3-${{ github.event.inputs.tag }}.zip
+          asset_content_type: application/zip
+      - name: Upload Release Asset tar
+        id: upload-release-asset-tar
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/distributions/aiven-kafka-connect-s3-${{ github.event.inputs.tag }}.tar
+          asset_name: aiven-kafka-connect-s3-${{ github.event.inputs.tag }}.tar
+          asset_content_type: application/x-tar
