@@ -8,7 +8,7 @@ on:
         default: ''
 jobs:
   build:
-    name: Release
+    name: Release v${{ github.event.inputs.tag }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
