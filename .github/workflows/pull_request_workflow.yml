@@ -13,11 +13,5 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-      - name: Output Run ID
-        run: echo ${{ github.run_id }}
-      - name: Output Run Number
-        run: echo ${{ github.run_number }}
       - name: Build with Gradle
         run: ./gradlew build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

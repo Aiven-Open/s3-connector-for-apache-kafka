@@ -29,7 +29,7 @@
 <module name="Checker">
     <!-- See http://checkstyle.sourceforge.net/config_filters.html#SuppressionFilter -->
     <module name="SuppressionFilter">
-        <property name="file" value="${config_loc}/suppressions.xml" default="config/checkstyle/suppressions.xml"/>
+        <property name="file" value="${config_loc}/suppressions.xml" default="checkstyle/suppressions.xml"/>
     </module>
 
     <property name="charset" value="UTF-8"/>
@@ -37,16 +37,10 @@
     <property name="localeLanguage" value="en"/>
     <property name="fileExtensions" value="java, properties, xml"/>
 
-    <!-- Excludes all 'module-info.java' files              -->
-    <!-- See https://checkstyle.org/config_filefilters.html -->
-    <module name="BeforeExecutionExclusionFileFilter">
-        <property name="fileNamePattern" value="module\-info\.java$"/>
-    </module>
-
     <!-- See http://checkstyle.sourceforge.net/config_header.html#RegexpHeader -->
     <module name="RegexpHeader">
         <property name="fileExtensions" value="java"/>
-        <property name="headerFile" value="${config_loc}/java.header" default="config/checkstyle/java.header"/>
+        <property name="headerFile" value="${config_loc}/java.header" default="checkstyle/java.header"/>
     </module>
 
     <!-- See http://checkstyle.sourceforge.net/config_whitespace.html#FileTabCharacter -->
@@ -59,8 +53,15 @@
 
     <!-- See http://checkstyle.sourceforge.net/config_sizes.html#LineLength -->
     <module name="LineLength">
+        <property name="fileExtensions" value="java"/>
         <property name="max" value="120"/>
         <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+    </module>
+
+    <module name="SuppressWithPlainTextCommentFilter">
+        <property name="offCommentFormat" value="CHECKSTYLE OFF\: ([\w\|]+)"/>
+        <property name="onCommentFormat" value="CHECKSTYLE ON\: ([\w\|]+)"/>
+        <property name="checkFormat" value="$1"/>
     </module>
 
     <!-- See http://checkstyle.sourceforge.net/config.html#TreeWalker -->
@@ -281,6 +282,11 @@
 
         <!-- See http://checkstyle.sourceforge.net/config_sizes.html#ParameterNumber -->
         <module name="ParameterNumber">
+            <property name="max" value="10"/>
+        </module>
+
+        <!-- See http://checkstyle.sourceforge.net/config_metrics.html#ClassDataAbstractionCoupling -->
+        <module name="ClassDataAbstractionCoupling">
             <property name="max" value="10"/>
         </module>
 

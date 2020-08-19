@@ -15,7 +15,6 @@
  */
 
 plugins {
-
     // https://docs.gradle.org/current/userguide/java_library_plugin.html
     id "java-library"
 
@@ -31,43 +30,56 @@ plugins {
     // https://docs.gradle.org/current/userguide/publishing_maven.html
     id "maven-publish"
 
+    id "com.jfrog.bintray" version "1.8.1"
 }
 
 group = "io.aiven"
 version = System.getenv("RELEASE_VERSION") ?: "0-SNAPSHOT"
 
-repositories {
-    mavenLocal()
-    jcenter()
-    maven {
-        name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/aiven/aiven-kafka-connect-commons")
-        credentials {
-            username = System.getenv("GITHUB_ACTOR")
-            password = System.getenv("GITHUB_TOKEN")
-        }
-    }
-}
-
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
+
+    withJavadocJar()
+    withSourcesJar()
+}
+
+compileJava {
+    options.compilerArgs = ["-Xlint:all", "-Werror"]
+}
+
+javadoc {
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
 }
 
 checkstyle {
     toolVersion "8.29"
-    configDir rootProject.file("checkstyle/")
+    getConfigDirectory().set(rootProject.file("checkstyle/"))
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jacoco {
     toolVersion = "0.8.5"
 }
 
+repositories {
+    mavenLocal()
+    jcenter()
+    maven {
+        url "https://aiven.bintray.com/maven"
+    }
+}
+
 ext {
     kafkaVersion = "1.1.0"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
-    aivenConnectCommonsVersion = "0.0.14"
+    aivenConnectCommonsVersion = "0.0.18"
     junitVersion = "5.6.2"
 }
 
@@ -84,50 +96,6 @@ distributions {
             }
         }
     }
-}
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            // Defaults, for clarity
-            groupId = getGroup()
-            artifactId = getName()
-            version = getVersion()
-
-            pom {
-                name = "Aiven Kafka S3 connector"
-                description = "A Kafka S3 sink connector for copying data from Kafka to S3."
-                url = "https://aiven.io"
-                organization {
-                    name = "Aiven Oy"
-                    url = "https://aiven.io"
-                }
-                licenses {
-                    license {
-                        name = "GNU Affero General Public License 3.0"
-                        url = "https://www.gnu.org/licenses/agpl-3.0.en.html"
-                        distribution = "repo"
-                    }
-                }
-                scm {
-                    connection = "scm:git:git://github.com/aiven/aiven-kafka-connect-s3.git"
-                    developerConnection = "scm:git:git@github.com:aiven/aiven-kafka-connect-s3.git"
-                    url = "https://github.com/aiven/aiven-kafka-connect-s3.git"
-                    tag = "HEAD"
-                }
-            }
-        }
-    }
-}
-
-processResources {
-    filesMatching('aiven-kafka-connect-s3-version.properties') {
-        expand(version: version)
-    }
-}
-
-test {
-    useJUnitPlatform()
 }
 
 dependencies {
@@ -154,10 +122,64 @@ dependencies {
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 }
 
-jar {
-    manifest {
-        attributes(
-                'Version': "$version"
-        )
+processResources {
+    filesMatching('aiven-kafka-connect-s3-version.properties') {
+        expand(version: version)
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    publications = ['maven']
+    publish = true
+    override = false
+    pkg {
+        repo = 'maven'
+        name = 'aiven-kafka-connect-s3'
+        userOrg = 'aiven'
+        licenses = ['Apache-2.0']
+        websiteUrl = 'https://github.com/aiven/aiven-kafka-connect-s3'
+        vcsUrl = 'https://github.com/aiven/aiven-kafka-connect-s3.git'
+        labels = ['kafka', 'connect', 's3']
+        publicDownloadNumbers = true
+        version {
+            name = project.getVersion()
+            desc = 'Aiven Kafka S3 connector ' + project.getVersion()
+            released  = new Date()
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = getGroup()
+            artifactId = "aiven-kafka-connect-s3"
+            version = getVersion()
+            pom {
+                name = "Aiven Kafka S3 connector"
+                description = "A Kafka S3 sink connector for copying data from Kafka to S3."
+                url = "https://aiven.io"
+                organization {
+                    name = "Aiven Oy"
+                    url = "https://aiven.io"
+                }
+                licenses {
+                    license {
+                        name = "Apache 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0"
+                        distribution = "repo"
+                    }
+                }
+                scm {
+                    connection = "scm:git:git://github.com/aiven/aiven-kafka-connect-s3.git"
+                    developerConnection = "scm:git:git@github.com:aiven/aiven-kafka-connect-s3.git"
+                    url = "https://github.com/aiven/aiven-kafka-connect-s3.git"
+                    tag = "HEAD"
+                }
+            }
+            from components.java
+        }
     }
 }

@@ -21,20 +21,10 @@
 <suppressions>
 
     <!-- switch statements on types exceed maximum complexity -->
-    <suppress checks="(CyclomaticComplexity)"
-              files="(AivenKafkaConnectS3SinkTask).java"/>
-
-    <suppress checks="(NPathComplexity)"
-              files="(AivenKafkaConnectS3SinkTask).java"/>
-
-    <suppress checks="(ClassFanOutComplexity)"
-              files="(AivenKafkaConnectS3SinkTask|AivenKafkaConnectS3SinkTaskTest).java"/>
-
-    <suppress checks="(JavaNCSS)"
-              files="(AivenKafkaConnectS3SinkTask).java"/>
-
     <suppress checks="(ClassFanOutComplexity)"
               files="(S3SinkConfig|S3SinkTaskTest).java"/>
 
+    <suppress checks="ClassDataAbstractionCoupling"
+              files="(S3SinkConfig|S3SinkTaskTest).java"/>
 
 </suppressions>
