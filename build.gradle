@@ -15,7 +15,6 @@
  */
 
 plugins {
-
     // https://docs.gradle.org/current/userguide/java_library_plugin.html
     id "java-library"
 
@@ -31,10 +30,11 @@ plugins {
     // https://docs.gradle.org/current/userguide/publishing_maven.html
     id "maven-publish"
 
+    id "com.jfrog.bintray" version "1.8.1"
 }
 
 group = "io.aiven"
-version = hasProperty("module_version") ? "$project.module_version" : 'unknown'
+version = System.getenv("RELEASE_VERSION") ?: "0-SNAPSHOT"
 
 repositories {
     mavenLocal()
@@ -44,22 +44,47 @@ repositories {
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
+
+    withJavadocJar()
+    withSourcesJar()
+}
+
+compileJava {
+    options.compilerArgs = ["-Xlint:all", "-Werror"]
+}
+
+javadoc {
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
 }
 
 checkstyle {
     toolVersion "8.29"
-    configDir rootProject.file("checkstyle/")
+    getConfigDirectory().set(rootProject.file("checkstyle/"))
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jacoco {
     toolVersion = "0.8.5"
 }
 
+repositories {
+    mavenLocal()
+    jcenter()
+    maven {
+        url "https://aiven.bintray.com/maven"
+    }
+}
+
 ext {
     kafkaVersion = "1.1.0"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
-    aivenConnectCommonsVersion = "0.9"
+    aivenConnectCommonsVersion = "0.0.1"
     junitVersion = "5.6.2"
 }
 
@@ -78,14 +103,65 @@ distributions {
     }
 }
 
+dependencies {
+    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
+    compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
+
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
+    implementation "com.amazonaws:aws-java-sdk-s3:$amazonS3Version"
+    implementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
+
+    runtimeOnly "org.slf4j:slf4j-log4j12:$slf4jVersion"
+
+    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
+    compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
+    compileOnly "org.slf4j:slf4j-api:$slf4jVersion"
+
+    testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
+    testImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
+    testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
+    testImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+    testImplementation 'io.findify:s3mock_2.11:0.2.3'
+
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+}
+
+processResources {
+    filesMatching('aiven-kafka-connect-s3-version.properties') {
+        expand(version: version)
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    publications = ['maven']
+    publish = true
+    override = false
+    pkg {
+        repo = 'maven'
+        name = 'aiven-kafka-connect-s3'
+        userOrg = 'aiven'
+        licenses = ['Apache-2.0']
+        websiteUrl = 'https://github.com/aiven/aiven-kafka-connect-s3'
+        vcsUrl = 'https://github.com/aiven/aiven-kafka-connect-s3.git'
+        labels = ['kafka', 'connect', 's3']
+        publicDownloadNumbers = true
+        version {
+            name = project.getVersion()
+            desc = 'Aiven Kafka S3 connector ' + project.getVersion()
+            released  = new Date()
+        }
+    }
+}
+
 publishing {
     publications {
         maven(MavenPublication) {
-            // Defaults, for clarity
             groupId = getGroup()
-            artifactId = getName()
+            artifactId = "aiven-kafka-connect-s3"
             version = getVersion()
-
             pom {
                 name = "Aiven Kafka S3 connector"
                 description = "A Kafka S3 sink connector for copying data from Kafka to S3."
@@ -96,8 +172,8 @@ publishing {
                 }
                 licenses {
                     license {
-                        name = "GNU Affero General Public License 3.0"
-                        url = "https://www.gnu.org/licenses/agpl-3.0.en.html"
+                        name = "Apache 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0"
                         distribution = "repo"
                     }
                 }
@@ -108,6 +184,7 @@ publishing {
                     tag = "HEAD"
                 }
             }
+            from components.java
         }
     }
 }
@@ -144,4 +221,12 @@ dependencies {
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+}
+
+jar {
+    manifest {
+        attributes(
+                'Version': "${project.version}"
+        )
+    }
 }
