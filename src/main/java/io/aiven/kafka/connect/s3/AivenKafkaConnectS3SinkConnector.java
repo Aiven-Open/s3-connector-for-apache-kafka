@@ -22,13 +22,13 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.sink.SinkConnector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AivenKafkaConnectS3SinkConnector extends Connector {
+public class AivenKafkaConnectS3SinkConnector extends SinkConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
 
