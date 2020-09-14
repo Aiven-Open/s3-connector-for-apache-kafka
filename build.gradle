@@ -80,7 +80,7 @@ ext {
     kafkaVersion = "1.1.0"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
-    aivenConnectCommonsVersion = "0.0.1"
+    aivenConnectCommonsVersion = "0.1.0"
     junitVersion = "5.6.2"
 }
 
