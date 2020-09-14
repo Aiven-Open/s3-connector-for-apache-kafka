@@ -72,7 +72,7 @@ repositories {
     mavenLocal()
     jcenter()
     maven {
-        url "https://aiven.bintray.com/maven"
+        url "http://dl.bintray.com/aiven/maven"
     }
 }
 
