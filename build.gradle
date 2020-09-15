@@ -34,7 +34,6 @@ plugins {
 }
 
 group = "io.aiven"
-version = System.getenv("RELEASE_VERSION") ?: "0-SNAPSHOT"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
