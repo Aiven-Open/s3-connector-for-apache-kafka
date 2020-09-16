@@ -4,6 +4,8 @@
 
 This is a sink Kafka Connect connector that stores Kafka messages in a AWS S3 bucket.
 
+The connector requires Java 11 or newer for development and production.
+
 ## How to works
 
 The connector subscribes to the specified Kafka topics and collects messages coming in them and periodically dumps the collected data to the specified bucket in AWS S3.
