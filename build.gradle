@@ -21,6 +21,9 @@ plugins {
     // https://docs.gradle.org/current/userguide/checkstyle_plugin.html
     id "checkstyle"
 
+    // https://docs.gradle.org/current/userguide/idea_plugin.html
+    id "idea"
+
     // https://docs.gradle.org/current/userguide/jacoco_plugin.html
     id "jacoco"
 
@@ -53,11 +56,6 @@ javadoc {
     }
 }
 
-checkstyle {
-    toolVersion "8.29"
-    getConfigDirectory().set(rootProject.file("checkstyle/"))
-}
-
 jacoco {
     toolVersion = "0.8.5"
 }
@@ -76,6 +74,34 @@ ext {
     slf4jVersion = "1.7.25"
     aivenConnectCommonsVersion = "0.1.0"
     junitVersion = "5.6.2"
+    testcontainersVersion = "1.12.0"
+    localstackVersion = "0.2.5"
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            srcDirs = ['src/integration-test/java']
+        }
+        resources {
+            srcDirs = ['src/integration-test/resources']
+        }
+
+        compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+idea {
+    module {
+        testSourceDirs += project.sourceSets.integrationTest.java.srcDirs
+        testSourceDirs += project.sourceSets.integrationTest.resources.srcDirs
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntimeClasspath
 }
 
 dependencies {
@@ -102,6 +128,40 @@ dependencies {
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+
+    integrationTestImplementation "org.apache.kafka:connect-api:$kafkaVersion"
+    integrationTestImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
+    integrationTestImplementation "org.apache.kafka:connect-json:$kafkaVersion"
+    integrationTestImplementation "org.xerial.snappy:snappy-java:1.1.7.5"
+
+    integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
+    integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
+    integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
+    // Make test utils from 'test' available in 'integration-test'
+    integrationTestImplementation sourceSets.test.output
+
+    integrationTestImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
+}
+
+checkstyle {
+    toolVersion "8.29"
+    getConfigDirectory().set(rootProject.file("checkstyle/"))
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    dependsOn test, distTar
+
+    useJUnitPlatform()
+
+    // Run always.
+    outputs.upToDateWhen { false }
+    // Pass the distribution file path to the tests.
+    systemProperty("integration-test.distribution.file.path", distTar.archiveFile.get().asFile.path)
 }
 
 test {
