@@ -21,6 +21,9 @@
 <suppressions>
 
     <!-- switch statements on types exceed maximum complexity -->
+    <suppress checks="(CyclomaticComplexity)"
+              files="(S3SinkConfig).java"/>
+
     <suppress checks="(ClassFanOutComplexity)"
               files="(S3SinkConfig|S3SinkTaskTest|IntegrationTest).java"/>
 
