@@ -47,6 +47,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -172,6 +173,69 @@ final class IntegrationTest implements KafkaIntegrationBase {
                 final String blobName = getBlobName(partition, 0, compression);
                 final String actualLine = blobContents.get(blobName).get(i);
                 final String expectedLine = key + "," + value;
+                assertEquals(expectedLine, actualLine);
+            }
+        }
+    }
+
+    @Test
+    final void jsonlOutputTest() throws ExecutionException, InterruptedException, IOException {
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(CONNECTOR_NAME));
+        final String compression = "none";
+        final String contentType = "jsonl";
+        connectorConfig.put("format.output.fields", "key,value");
+        connectorConfig.put("format.output.fields.value.encoding", "none");
+        connectorConfig.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
+        connectorConfig.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
+        connectorConfig.put("value.converter.schemas.enable", "false");
+        connectorConfig.put("file.compression.type", compression);
+        connectorConfig.put("format.output.type", contentType);
+        connectRunner.createConnector(connectorConfig);
+
+        final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
+        int cnt = 0;
+        for (int i = 0; i < 10; i++) {
+            for (int partition = 0; partition < 4; partition++) {
+                final String key = "key-" + cnt;
+                final String value = "[{" + "\"name\":\"user-" + cnt + "\"}]";
+                cnt += 1;
+
+                sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, partition, key, value));
+            }
+        }
+        producer.flush();
+        for (final Future<RecordMetadata> sendFuture : sendFutures) {
+            sendFuture.get();
+        }
+
+        // TODO more robust way to detect that Connect finished processing
+        Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
+
+        final List<String> expectedBlobs = Arrays.asList(
+            getBlobName(0, 0, compression),
+            getBlobName(1, 0, compression),
+            getBlobName(2, 0, compression),
+            getBlobName(3, 0, compression));
+        for (final String blobName : expectedBlobs) {
+            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+        }
+
+        final Map<String, List<String>> blobContents = new HashMap<>();
+        for (final String blobName : expectedBlobs) {
+            final List<String> items = new ArrayList<>(testBucketAccessor.readLines(blobName, compression));
+            blobContents.put(blobName, items);
+        }
+
+        cnt = 0;
+        for (int i = 0; i < 10; i++) {
+            for (int partition = 0; partition < 4; partition++) {
+                final String key = "key-" + cnt;
+                final String value = "[{" + "\"name\":\"user-" + cnt + "\"}]";
+                cnt += 1;
+
+                final String blobName = getBlobName(partition, 0, "none");
+                final String actualLine = blobContents.get(blobName).get(i);
+                final String expectedLine = "{\"value\":" + value + ",\"key\":\"" + key + "\"}";
                 assertEquals(expectedLine, actualLine);
             }
         }

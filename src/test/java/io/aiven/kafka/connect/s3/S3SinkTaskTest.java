@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -43,11 +44,15 @@ import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.converters.ByteArrayConverter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.s3.testutils.BucketAccessor;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -57,11 +62,13 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.github.luben.zstd.ZstdInputStream;
+import com.google.common.collect.Lists;
 import io.findify.s3mock.S3Mock;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.xerial.snappy.SnappyInputStream;
@@ -74,7 +81,10 @@ import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_COMPRESSION;
 import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_FIELDS;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class S3SinkTaskTest {
@@ -89,6 +99,8 @@ public class S3SinkTaskTest {
     private final ByteArrayConverter byteArrayConverter = new ByteArrayConverter();
 
     private Map<String, String> properties;
+
+    private static BucketAccessor testBucketAccessor;
 
     @BeforeAll
     public static void setUpClass() {
@@ -119,6 +131,9 @@ public class S3SinkTaskTest {
         builder.withPathStyleAccessEnabled(true);
 
         s3Client = builder.build();
+
+        testBucketAccessor = new BucketAccessor(s3Client, TEST_BUCKET);
+        testBucketAccessor.createBucket();
     }
 
     @AfterAll
@@ -318,6 +333,181 @@ public class S3SinkTaskTest {
         task.stop();
     }
 
+    @Test
+    final void failedForStringValuesByDefault() {
+        final S3SinkTask task = new S3SinkTask();
+
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "any_prefix");
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStringValueSchema("topic0", 0, "key0", "value0", 10, 1000),
+            createRecordWithStringValueSchema("topic0", 1, "key1", "value1", 20, 1001),
+            createRecordWithStringValueSchema("topic1", 0, "key2", "value2", 30, 1002)
+
+        );
+
+        final Throwable t = assertThrows(
+            ConnectException.class,
+            () -> task.put(records)
+        );
+        assertEquals(
+            "Record value schema type must be BYTES, STRING given", t.getMessage());
+    }
+
+    @Test
+    final void supportStringValuesForJsonL() throws IOException {
+        final S3SinkTask task = new S3SinkTask();
+
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStringValueSchema("topic0", 0, "key0", "value0", 10, 1000),
+            createRecordWithStringValueSchema("topic0", 1, "key1", "value1", 20, 1001),
+            createRecordWithStringValueSchema("topic1", 0, "key2", "value2", 30, 1002)
+        );
+
+        final TopicPartition tp00 = new TopicPartition("topic0", 0);
+        final TopicPartition tp01 = new TopicPartition("topic0", 1);
+        final TopicPartition tp10 = new TopicPartition("topic1", 0);
+        final Collection<TopicPartition> tps = List.of(tp00, tp01, tp10);
+        task.open(tps);
+
+        task.put(records);
+
+        final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(tp00, new OffsetAndMetadata(10));
+        offsets.put(tp01, new OffsetAndMetadata(20));
+        offsets.put(tp10, new OffsetAndMetadata(30));
+        task.flush(offsets);
+
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        final List<String> expectedBlobs = Lists.newArrayList(
+                "prefix-topic0-0-00000000000000000010" + compressionType.extension(),
+                "prefix-topic0-1-00000000000000000020" + compressionType.extension(),
+                "prefix-topic1-0-00000000000000000030" + compressionType.extension()
+            );
+
+        for (final String blobName : expectedBlobs) {
+            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+        }
+
+        assertIterableEquals(
+            Arrays.asList("{\"value\":\"value0\",\"key\":\"key0\"}"),
+            testBucketAccessor.readLines("prefix-topic0-0-00000000000000000010", compression));
+        assertIterableEquals(
+            Arrays.asList("{\"value\":\"value1\",\"key\":\"key1\"}"),
+            testBucketAccessor.readLines("prefix-topic0-1-00000000000000000020", compression));
+        assertIterableEquals(
+            Arrays.asList("{\"value\":\"value2\",\"key\":\"key2\"}"),
+            testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression));
+    }
+
+    @Test
+    final void failedForStructValuesByDefault() {
+        final S3SinkTask task = new S3SinkTask();
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
+            createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
+            createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
+        );
+
+        final Throwable t = assertThrows(
+            ConnectException.class,
+            () -> task.put(records)
+        );
+        assertEquals(
+            "Record value schema type must be BYTES, STRUCT given", t.getMessage());
+    }
+
+    @Test
+    final void supportStructValuesForJsonL() throws IOException {
+        final S3SinkTask task = new S3SinkTask();
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
+            createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
+            createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
+
+        );
+        final TopicPartition tp00 = new TopicPartition("topic0", 0);
+        final TopicPartition tp01 = new TopicPartition("topic0", 1);
+        final TopicPartition tp10 = new TopicPartition("topic1", 0);
+        final Collection<TopicPartition> tps = List.of(tp00, tp01, tp10);
+        task.open(tps);
+
+        task.put(records);
+
+        final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(tp00, new OffsetAndMetadata(10));
+        offsets.put(tp01, new OffsetAndMetadata(20));
+        offsets.put(tp10, new OffsetAndMetadata(30));
+        task.flush(offsets);
+
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        final List<String> expectedBlobs = Lists.newArrayList(
+            "prefix-topic0-0-00000000000000000010" + compressionType.extension(),
+            "prefix-topic0-1-00000000000000000020" + compressionType.extension(),
+            "prefix-topic1-0-00000000000000000030" + compressionType.extension()
+        );
+
+
+        for (final String blobName : expectedBlobs) {
+            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+        }
+
+        assertIterableEquals(
+            Arrays.asList("{\"value\":{\"name\":\"name0\"},\"key\":\"key0\"}"),
+            testBucketAccessor.readLines("prefix-topic0-0-00000000000000000010", compression));
+        assertIterableEquals(
+            Arrays.asList("{\"value\":{\"name\":\"name1\"},\"key\":\"key1\"}"),
+            testBucketAccessor.readLines("prefix-topic0-1-00000000000000000020", compression));
+        assertIterableEquals(
+            Arrays.asList("{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}"),
+            testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression));
+    }
+
+
+    private SinkRecord createRecordWithStringValueSchema(final String topic,
+                                                         final int partition,
+                                                         final String key,
+                                                         final String value,
+                                                         final int offset,
+                                                         final long timestamp) {
+        return new SinkRecord(
+            topic,
+            partition,
+            Schema.STRING_SCHEMA,
+            key,
+            Schema.STRING_SCHEMA,
+            value,
+            offset,
+            timestamp,
+            TimestampType.CREATE_TIME);
+    }
+
     private Collection<SinkRecord> createBatchOfRecord(final int offsetFrom, final int offsetTo) {
         final ArrayList<SinkRecord> records = new ArrayList<>();
         for (int offset = offsetFrom; offset < offsetTo; offset++) {
@@ -336,6 +526,27 @@ public class S3SinkTaskTest {
 
         }
         return records;
+    }
+
+    private SinkRecord createRecordWithStructValueSchema(final String topic,
+                                                         final int partition,
+                                                         final String key,
+                                                         final String name,
+                                                         final int offset,
+                                                         final long timestamp) {
+        final Schema schema = SchemaBuilder.struct().field("name", Schema.STRING_SCHEMA);
+        final Struct struct = new Struct(schema).put("name", name);
+        return new SinkRecord(
+            topic,
+            partition,
+            Schema.STRING_SCHEMA,
+            key,
+            schema,
+            struct,
+            offset,
+            timestamp,
+            TimestampType.CREATE_TIME
+        );
     }
 
     private ConnectHeaders createTestHeaders() {

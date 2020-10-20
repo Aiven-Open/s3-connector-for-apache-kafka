@@ -34,6 +34,8 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import io.aiven.kafka.connect.common.config.FormatterUtils;
 import io.aiven.kafka.connect.common.config.Variables;
 import io.aiven.kafka.connect.common.output.OutputWriter;
+import io.aiven.kafka.connect.common.output.jsonwriter.JsonLinesOutputWriter;
+import io.aiven.kafka.connect.common.output.plainwriter.OutputPlainWriter;
 import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.common.templating.VariableTemplatePart;
 
@@ -85,12 +87,19 @@ public class S3StreamWriter {
                 .withPathStyleAccessEnabled(true);
         }
         this.s3Client = s3ClientBuilder.build();
-        this.outputWriter =
-            OutputWriter
-                .builder()
-                .addFields(config.getOutputFields())
-                .build();
+        this.outputWriter = getOutputWriter();
         this.streams = new HashMap<>();
+    }
+
+    private OutputWriter getOutputWriter() {
+        switch (this.config.getFormatType()) {
+            case CSV:
+                return OutputPlainWriter.builder().addFields(config.getOutputFields()).build();
+            case JSONL:
+                return JsonLinesOutputWriter.builder().addFields(config.getOutputFields()).build();
+            default:
+                throw new ConnectException("Unsupported format type " + config.getFormatType());
+        }
     }
 
     private AwsClientBuilder.EndpointConfiguration newEndpointConfiguration(final S3SinkConfig config) {

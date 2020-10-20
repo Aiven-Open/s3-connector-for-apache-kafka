@@ -74,11 +74,6 @@ public class BucketAccessor {
 
     public final List<String> readLines(final String blobName, final String compression) throws IOException {
         Objects.requireNonNull(blobName, "blobName cannot be null");
-        return readLines0(blobName, compression);
-    }
-
-    private List<String> readLines0(final String blobName, final String compression) throws IOException {
-        Objects.requireNonNull(blobName, "blobName cannot be null");
         final byte[] blobBytes = s3.getObject(bucketName, blobName).getObjectContent().readAllBytes();
 
         try (final ByteArrayInputStream bais = new ByteArrayInputStream(blobBytes)) {

@@ -98,7 +98,7 @@ class S3SinkConfigTest {
             ),
             conf.getOutputFields()
         );
-
+        assertEquals(FormatType.forName("csv"), conf.getFormatType());
     }
 
     @Test
@@ -672,6 +672,38 @@ class S3SinkConfigTest {
             ),
             renderedPrefix
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"jsonl", "csv"})
+    void supportedFormatTypeConfig(final String formatType) {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id");
+        properties.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key");
+        properties.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "any_prefix");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, formatType);
+
+
+        final S3SinkConfig c = new S3SinkConfig(properties);
+        final FormatType expectedFormatType = FormatType.forName(formatType);
+
+        assertEquals(expectedFormatType, c.getFormatType());
+    }
+
+    @Test
+    void wrongFormatTypeConfig() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "unknown");
+
+        final Throwable t = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(properties)
+        );
+        assertEquals(
+            "Invalid value unknown for configuration format.output.type: "
+                + "supported values are: 'csv', 'jsonl'", t.getMessage());
+
     }
 
 }
