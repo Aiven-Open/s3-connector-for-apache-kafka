@@ -207,6 +207,26 @@ timestamp.timezone=Europe/Berlin
 timestamp.source=wallclock
 ```
 
+## Development
+
+### Integration testing
+
+Integration tests are implemented using JUnit, Gradle and Docker.
+
+To run them, you need:
+- Docker installed.
+
+Integration testing doesn't require valid AWS credentials.
+
+To simulate AWS S3 behaviour, tests use [LocalStack](https://github.com/localstack/localstack-java-utils).
+
+In order to run the integration tests, execute from the project root
+directory:
+
+```bash
+./gradlew clean integrationTest
+```
+
 # License
 
 This project is licensed under the [Apache License, Version 2.0](LICENSE).

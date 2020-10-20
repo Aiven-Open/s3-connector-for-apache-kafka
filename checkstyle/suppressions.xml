@@ -22,7 +22,7 @@
 
     <!-- switch statements on types exceed maximum complexity -->
     <suppress checks="(ClassFanOutComplexity)"
-              files="(S3SinkConfig|S3SinkTaskTest).java"/>
+              files="(S3SinkConfig|S3SinkTaskTest|IntegrationTest).java"/>
 
     <suppress checks="ClassDataAbstractionCoupling"
               files="(S3SinkConfig|S3SinkTaskTest).java"/>
