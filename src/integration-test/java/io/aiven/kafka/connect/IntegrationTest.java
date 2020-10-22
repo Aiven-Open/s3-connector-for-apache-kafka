@@ -38,6 +38,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector;
 import io.aiven.kafka.connect.s3.testutils.BucketAccessor;
+import io.aiven.kafka.connect.s3.testutils.IndexesToString;
+import io.aiven.kafka.connect.s3.testutils.KeyValueGenerator;
+import io.aiven.kafka.connect.s3.testutils.KeyValueMessage;
 
 import cloud.localstack.Localstack;
 import cloud.localstack.awssdkv1.TestUtils;
@@ -127,16 +130,13 @@ final class IntegrationTest implements KafkaIntegrationBase {
         connectRunner.createConnector(connectorConfig);
 
         final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
-        int cnt = 0;
-        for (int i = 0; i < 10; i++) {
-            for (int partition = 0; partition < 4; partition++) {
-                final String key = "key-" + cnt;
-                final String value = "value-" + cnt;
-                cnt += 1;
+        final IndexesToString keyGen = (partition, epoch, currIdx) -> "key-" + currIdx;
+        final IndexesToString valueGen = (partition, epoch, currIdx) -> "value-" + currIdx;
 
-                sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, partition, key, value));
-            }
+        for (final KeyValueMessage msg : new KeyValueGenerator(4, 10, keyGen, valueGen)) {
+            sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, msg.partition, msg.key, msg.value));
         }
+
         producer.flush();
         for (final Future<RecordMetadata> sendFuture : sendFutures) {
             sendFuture.get();
@@ -163,18 +163,11 @@ final class IntegrationTest implements KafkaIntegrationBase {
             );
         }
 
-        cnt = 0;
-        for (int i = 0; i < 10; i++) {
-            for (int partition = 0; partition < 4; partition++) {
-                final String key = "key-" + cnt;
-                final String value = "value-" + cnt;
-                cnt += 1;
-
-                final String blobName = getBlobName(partition, 0, compression);
-                final String actualLine = blobContents.get(blobName).get(i);
-                final String expectedLine = key + "," + value;
-                assertEquals(expectedLine, actualLine);
-            }
+        for (final KeyValueMessage msg : new KeyValueGenerator(4, 10, keyGen, valueGen)) {
+            final String blobName = getBlobName(msg.partition, 0, compression);
+            final String actualLine = blobContents.get(blobName).get(msg.epoch);
+            final String expectedLine = msg.key + "," + msg.value;
+            assertEquals(expectedLine, actualLine);
         }
     }
 
