@@ -19,20 +19,18 @@ package io.aiven.kafka.connect.s3;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
 
+import io.aiven.kafka.connect.common.config.AivenCommonConfig;
 import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.common.config.FixedSetRecommender;
 import io.aiven.kafka.connect.common.config.OutputField;
@@ -51,7 +49,7 @@ import com.amazonaws.regions.Regions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class S3SinkConfig extends AbstractConfig {
+public class S3SinkConfig extends AivenCommonConfig {
     @Deprecated
     public static final String AWS_ACCESS_KEY_ID = "aws_access_key_id";
     @Deprecated
@@ -88,31 +86,13 @@ public class S3SinkConfig extends AbstractConfig {
     public static final String TIMESTAMP_TIMEZONE = "timestamp.timezone";
     public static final String TIMESTAMP_SOURCE = "timestamp.source";
 
-    public static final Set<String> OUTPUT_FILED_NAMES = new HashSet<>() {
-        {
-            add(OUTPUT_FIELD_NAME_KEY);
-            add(OUTPUT_FIELD_NAME_OFFSET);
-            add(OUTPUT_FIELD_NAME_TIMESTAMP);
-            add(OUTPUT_FIELD_NAME_VALUE);
-            add(OUTPUT_FIELD_NAME_HEADERS);
-        }
-    };
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
     public static final String AWS_S3_ENDPOINT_CONFIG = "aws.s3.endpoint";
     public static final String AWS_S3_PREFIX_CONFIG = "aws.s3.prefix";
     public static final String AWS_S3_REGION_CONFIG = "aws.s3.region";
-    public static final String FILE_NAME_PREFIX_CONFIG = "file.name.prefix";
-    public static final String FILE_NAME_TEMPLATE_CONFIG = "file.name.template";
-    public static final String FILE_COMPRESSION_TYPE_CONFIG = "file.compression.type";
-    public static final String FILE_MAX_RECORDS = "file.max.records";
-    public static final String FILE_NAME_TIMESTAMP_TIMEZONE = "file.name.timestamp.timezone";
-    public static final String FILE_NAME_TIMESTAMP_SOURCE = "file.name.timestamp.source";
-    public static final String FORMAT_OUTPUT_FIELDS_CONFIG = "format.output.fields";
-    public static final String FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG = "format.output.fields.value.encoding";
-    public static final String NAME_CONFIG = "name";
-    private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
+
     // FIXME since we support so far both old style and new style of property names
     //      Importance was set to medium,
     //      as soon we will migrate to new values it must be set to HIGH
@@ -120,7 +100,8 @@ public class S3SinkConfig extends AbstractConfig {
     private static final String GROUP_AWS = "AWS";
     private static final String GROUP_FILE = "File";
     private static final String GROUP_FORMAT = "Format";
-    private static final String DEFAULT_FILENAME_TEMPLATE = "{{topic}}-{{partition}}-{{start_offset}}";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
 
     public S3SinkConfig(final Map<String, String> originals) {
         super(configDef(), originals);
@@ -131,8 +112,8 @@ public class S3SinkConfig extends AbstractConfig {
         final var configDef = new ConfigDef();
         addAwsConfigGroup(configDef);
         addFileConfigGroup(configDef);
-        addFormatConfigGroup(configDef);
-        addTimestampConfig(configDef);
+        addOutputFieldsFormatConfigGroup(configDef, null);
+        addDeprecatedTimestampConfig(configDef);
         addDeprecatedConfiguration(configDef);
         return configDef;
     }
@@ -220,6 +201,7 @@ public class S3SinkConfig extends AbstractConfig {
 
     private static void addFileConfigGroup(final ConfigDef configDef) {
         final int fileGroupCounter = 0;
+
         final String supportedCompressionTypes = CompressionType.names().stream()
             .map(f -> "'" + f + "'")
             .collect(Collectors.joining(", "));
@@ -240,57 +222,7 @@ public class S3SinkConfig extends AbstractConfig {
         );
     }
 
-    private static void addFormatConfigGroup(final ConfigDef configDef) {
-        int formatGroupCounter = 0;
-
-        final String supportedOutputFields = OutputFieldType.names().stream()
-            .map(f -> "'" + f + "'")
-            .collect(Collectors.joining(", "));
-
-        configDef.define(
-            FORMAT_OUTPUT_FIELDS_CONFIG,
-            ConfigDef.Type.LIST,
-            null,
-            new OutputFieldsValidator(),
-            ConfigDef.Importance.MEDIUM,
-            "Fields to put into output files. "
-                + "The supported values are: " + supportedOutputFields + ".",
-            GROUP_FORMAT,
-            formatGroupCounter++,
-            ConfigDef.Width.NONE,
-            FORMAT_OUTPUT_FIELDS_CONFIG,
-            FixedSetRecommender.ofSupportedValues(OutputFieldType.names())
-        );
-
-        final String supportedValueFieldEncodingTypes = CompressionType.names().stream()
-            .map(f -> "'" + f + "'")
-            .collect(Collectors.joining(", "));
-
-        configDef.define(
-            FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG,
-            ConfigDef.Type.STRING,
-            OutputFieldEncodingType.BASE64.name,
-            (name, value) -> {
-                assert value instanceof String;
-                final String valueStr = (String) value;
-                if (!OutputFieldEncodingType.names().contains(valueStr)) {
-                    throw new ConfigException(
-                        FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG, valueStr,
-                        "supported values are: " + supportedValueFieldEncodingTypes);
-                }
-            },
-            ConfigDef.Importance.MEDIUM,
-            "The type of encoding for the value field. "
-                + "The supported values are: " + supportedOutputFields + ".",
-            GROUP_FORMAT,
-            formatGroupCounter,
-            ConfigDef.Width.NONE,
-            FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG,
-            FixedSetRecommender.ofSupportedValues(OutputFieldEncodingType.names())
-        );
-    }
-
-    private static void addTimestampConfig(final ConfigDef configDef) {
+    private static void addDeprecatedTimestampConfig(final ConfigDef configDef) {
         int timestampGroupCounter = 0;
 
         configDef.define(
@@ -611,41 +543,6 @@ public class S3SinkConfig extends AbstractConfig {
         return TimestampSource.of(
             getTimezone(),
             TimestampSource.Type.of(getString(TIMESTAMP_SOURCE))
-        );
-    }
-
-    public final String getConnectorName() {
-        return originalsStrings().get(NAME_CONFIG);
-    }
-
-    public final int getMaxRecordsPerFile() {
-        return getInt(FILE_MAX_RECORDS);
-    }
-
-    public final String getFilename() {
-        return resolveFilenameTemplate();
-    }
-
-    private String resolveFilenameTemplate() {
-        String fileNameTemplate = getString(FILE_NAME_TEMPLATE_CONFIG);
-        if (fileNameTemplate == null) {
-            fileNameTemplate = DEFAULT_FILENAME_TEMPLATE + getCompressionType().extension();
-        }
-        return fileNameTemplate;
-    }
-
-    public final Template getFilenameTemplate() {
-        return Template.of(getFilename());
-    }
-
-    public final ZoneId getFilenameTimezone() {
-        return ZoneId.of(getString(FILE_NAME_TIMESTAMP_TIMEZONE));
-    }
-
-    public final TimestampSource getFilenameTimestampSource() {
-        return TimestampSource.of(
-            getFilenameTimezone(),
-            TimestampSource.Type.of(getString(FILE_NAME_TIMESTAMP_SOURCE))
         );
     }
 
