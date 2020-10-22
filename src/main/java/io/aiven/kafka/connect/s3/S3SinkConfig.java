@@ -97,6 +97,7 @@ public class S3SinkConfig extends AivenCommonConfig {
     //      Importance was set to medium,
     //      as soon we will migrate to new values it must be set to HIGH
     //      same for default value
+
     private static final String GROUP_AWS = "AWS";
     private static final String GROUP_FILE = "File";
     private static final String GROUP_FORMAT = "Format";

@@ -32,9 +32,24 @@ The connector creates one file per Kafka Connect `offset.flush.interval.ms` sett
 Output files are text files that contain one record per line (i.e.,
 they're separated by `\n`).
 
+There are two types of data format available: 
+ - **[Default]** Flat structure, where field values are separated by comma (`csv`)
+
+    Configuration: ```format.output.type=csv```. 
+    Also, this is the default if the property is not present in the configuration.
+
+ - Complex structure, where file is in format of [JSON lines](https://jsonlines.org/). 
+    It contains one record per line and each line is a valid JSON object(`jsonl`)
+
+    Configuration: ```format.output.type=jsonl```. 
+
 The connector can output the following fields from records into the
 output: the key, the value, the timestamp, and the offset. (The set and the order of
+output: the key, the value, the timestamp, and the offset. (The set of
 these output fields is configurable.) The field values are separated by comma.
+
+
+#### CSV Format example
 
 The key and the value—if they're output—are stored as binaries encoded
 in [Base64](https://en.wikipedia.org/wiki/Base64).
@@ -56,6 +71,38 @@ output instead:
 
 A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp`, `headers`, and `value`. Defaults to `value`.
 
+**NB!**
+
+ - The `key.converter` property must be set to `org.apache.kafka.connect.converters.ByteArrayConverter`
+or `org.apache.kafka.connect.storage.StringConverter` for this data format.
+
+ - The `value.converter` property must be set to `org.apache.kafka.connect.converters.ByteArrayConverter` for this data format.
+ 
+#### JSONL Format example
+
+For example, if we output `key,value,offset,timestamp`, a record line might look like:
+
+```
+{ "key": "k1", "value": "v0", "offset": 1232155, "timestamp":"2020-01-01T00:00:01Z" }
+```
+
+OR
+
+```
+{ "key": "user1", "value": {"name": "John", "address": {"city": "London"}}, "offset": 1232155, "timestamp":"2020-01-01T00:00:01Z" }
+```
+
+It is recommended to use
+- `org.apache.kafka.connect.storage.StringConverter` or 
+- `org.apache.kafka.connect.json.JsonConverter`
+
+as `key.converter` or `value.converter` to make an output file human-readable.
+
+**NB!**
+
+ - The value of the `format.output.fields.value.encoding` property is ignored for this data format.
+ - Value/Key schema will not be presented in output file, even if `value.converter.schemas.enable` property is `true`.
+ But, it is still important to set this property correctly, so that connector could read records correctly. 
 ## Usage
 
 ### Connector Configuration
@@ -103,12 +150,14 @@ curl -X POST \
                 "aws_s3_prefix": "example-s3-sink/",
                 "aws_s3_region": "us-east-1",
                 "connector.class": "io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector",
-                "key.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+                "format.output.type": "jsonl"
+                "key.converter": "org.apache.kafka.connect.storage.StringConverter",
                 "output_compression": "gzip",
                 "output_fields": "value,key,timestamp",
                 "tasks.max": 1,
                 "topics": "source_topic,another_topic",
-                "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
+                "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+                "value.converter.schemas.enable": false
             }
         }
     EOF
@@ -154,13 +203,19 @@ Here is an example connector configuration with descriptions:
 connector.class=io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector
 
 # The key converter for this connector
-# (must be set to org.apache.kafka.connect.converters.ByteArrayConverter
-# or org.apache.kafka.connect.storage.StringConverter)
-key.converter=org.apache.kafka.connect.converters.ByteArrayConverter
+key.converter=org.apache.kafka.connect.storage.StringConverter
 
 # The value converter for this connector
-# (must be set to ByteArrayConverter)
-value.converter=org.apache.kafka.connect.converters.ByteArrayConverter
+value.converter=org.apache.kafka.connect.json.JsonConverter
+
+# Identify, if value contains a schema.
+# Required value converter is `org.apache.kafka.connect.json.JsonConverter`.
+value.converter.schemas.enable=false
+
+# The type of data format used to write data to the GCS output files.
+# The supported values are: `csv`, `jsonl`.
+# Optional, the default is `csv`.
+format.output.type=jsonl
 
 # A comma-separated list of topics to use as input for this connector
 # Also a regular expression version `topics.regex` is supported.
