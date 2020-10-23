@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.aiven.kafka.connect.common.config;
+package io.aiven.kafka.connect.s3.config;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -26,6 +26,12 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigException;
 
+import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.FormatType;
+import io.aiven.kafka.connect.common.config.FormatterUtils;
+import io.aiven.kafka.connect.common.config.OutputField;
+import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
+import io.aiven.kafka.connect.common.config.OutputFieldType;
 import io.aiven.kafka.connect.s3.S3SinkConfig;
 
 import com.amazonaws.regions.Regions;
@@ -639,7 +645,6 @@ class S3SinkConfigTest {
 
     @Test
     void shouldBuildPrefixTemplate() {
-
         final var prefix = "{{timestamp:unit=YYYY}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/";
 
         final Map<String, String> props = new HashMap<>();

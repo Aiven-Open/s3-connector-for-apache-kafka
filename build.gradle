@@ -127,6 +127,8 @@ dependencies {
     testImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
     testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
+    testImplementation "org.hamcrest:hamcrest:2.1"
+    testImplementation "org.mockito:mockito-core:3.3.3"
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 

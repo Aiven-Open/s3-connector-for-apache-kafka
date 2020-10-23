@@ -207,7 +207,9 @@ public class S3SinkTaskTest {
         assertFalse(s3Client.doesObjectExist(TEST_BUCKET,
             "aiven--test-topic-0-00000000000000000100" + compressionType.extension()));
 
-        task.close(tps);
+        offsets.clear();
+        offsets.put(tp, new OffsetAndMetadata(100));
+        task.flush(offsets);
 
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET,
             "aiven--test-topic-0-00000000000000000100" + compressionType.extension()));
@@ -218,6 +220,9 @@ public class S3SinkTaskTest {
         assertFalse(s3Client.doesObjectExist(TEST_BUCKET,
             "aiven--test-topic-0-00000000000000000200" + compressionType.extension()));
 
+        offsets.clear();
+        offsets.put(tp, new OffsetAndMetadata(200));
+        task.flush(offsets);
         task.stop();
 
         assertTrue(s3Client.doesObjectExist(TEST_BUCKET,
@@ -350,9 +355,11 @@ public class S3SinkTaskTest {
 
         );
 
+        task.put(records);
+
         final Throwable t = assertThrows(
             ConnectException.class,
-            () -> task.put(records)
+            () -> task.flush(null)
         );
         assertEquals(
             "Record value schema type must be BYTES, STRING given", t.getMessage());
@@ -427,9 +434,11 @@ public class S3SinkTaskTest {
             createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
         );
 
+        task.put(records);
+
         final Throwable t = assertThrows(
             ConnectException.class,
-            () -> task.put(records)
+            () -> task.flush(null)
         );
         assertEquals(
             "Record value schema type must be BYTES, STRUCT given", t.getMessage());

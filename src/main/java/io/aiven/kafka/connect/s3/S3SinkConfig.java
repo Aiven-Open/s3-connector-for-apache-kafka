@@ -32,6 +32,7 @@ import org.apache.kafka.common.config.types.Password;
 
 import io.aiven.kafka.connect.common.config.AivenCommonConfig;
 import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.FilenameTemplateValidator;
 import io.aiven.kafka.connect.common.config.FixedSetRecommender;
 import io.aiven.kafka.connect.common.config.OutputField;
 import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
@@ -43,6 +44,7 @@ import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
 import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
 import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
 import io.aiven.kafka.connect.common.config.validators.UrlValidator;
+import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.templating.Template;
 
 import com.amazonaws.regions.Regions;
@@ -73,6 +75,10 @@ public class S3SinkConfig extends AivenCommonConfig {
     @Deprecated
     public static final String OUTPUT_FIELDS = "output_fields";
     @Deprecated
+    public static final String TIMESTAMP_TIMEZONE = "timestamp.timezone";
+    @Deprecated
+    public static final String TIMESTAMP_SOURCE = "timestamp.source";
+    @Deprecated
     public static final String OUTPUT_FIELD_NAME_KEY = "key";
     @Deprecated
     public static final String OUTPUT_FIELD_NAME_OFFSET = "offset";
@@ -83,8 +89,6 @@ public class S3SinkConfig extends AivenCommonConfig {
     @Deprecated
     public static final String OUTPUT_FIELD_NAME_HEADERS = "headers";
 
-    public static final String TIMESTAMP_TIMEZONE = "timestamp.timezone";
-    public static final String TIMESTAMP_SOURCE = "timestamp.source";
 
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
@@ -104,6 +108,7 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
 
+
     public S3SinkConfig(final Map<String, String> originals) {
         super(configDef(), originals);
         validate();
@@ -121,6 +126,7 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     private static void addAwsConfigGroup(final ConfigDef configDef) {
         int awsGroupCounter = 0;
+
         configDef.define(
             AWS_ACCESS_KEY_ID_CONFIG,
             Type.PASSWORD,
@@ -201,11 +207,29 @@ public class S3SinkConfig extends AivenCommonConfig {
     }
 
     private static void addFileConfigGroup(final ConfigDef configDef) {
-        final int fileGroupCounter = 0;
+        int fileGroupCounter = 0;
 
         final String supportedCompressionTypes = CompressionType.names().stream()
             .map(f -> "'" + f + "'")
             .collect(Collectors.joining(", "));
+
+        configDef.define(
+            FILE_NAME_TEMPLATE_CONFIG,
+            ConfigDef.Type.STRING,
+            null,
+            new FilenameTemplateValidator(FILE_NAME_TEMPLATE_CONFIG),
+            ConfigDef.Importance.MEDIUM,
+            "The template for file names on S3. "
+                + "Supports `{{ variable }}` placeholders for substituting variables. "
+                + "Currently supported variables are `topic`, `partition`, and `start_offset` "
+                + "(the offset of the first record in the file). "
+                + "Only some combinations of variables are valid, which currently are:\n"
+                + "- `topic`, `partition`, `start_offset`.",
+            GROUP_FILE,
+            fileGroupCounter++,
+            ConfigDef.Width.LONG,
+            FILE_NAME_TEMPLATE_CONFIG
+        );
 
         configDef.define(
             FILE_COMPRESSION_TYPE_CONFIG,
@@ -213,13 +237,65 @@ public class S3SinkConfig extends AivenCommonConfig {
             null,
             new FileCompressionTypeValidator(),
             ConfigDef.Importance.MEDIUM,
-            "The compression type used for files put on AWS. "
+            "The compression type used for files put on S3. "
                 + "The supported values are: " + supportedCompressionTypes + ".",
             GROUP_FILE,
-            fileGroupCounter,
+            fileGroupCounter++,
             ConfigDef.Width.NONE,
             FILE_COMPRESSION_TYPE_CONFIG,
             FixedSetRecommender.ofSupportedValues(CompressionType.names())
+        );
+
+        configDef.define(
+            FILE_MAX_RECORDS,
+            ConfigDef.Type.INT,
+            0,
+            new ConfigDef.Validator() {
+                @Override
+                public void ensureValid(final String name, final Object value) {
+                    assert value instanceof Integer;
+                    if ((Integer) value < 0) {
+                        throw new ConfigException(
+                            FILE_MAX_RECORDS, value,
+                            "must be a non-negative integer number");
+                    }
+                }
+            },
+            ConfigDef.Importance.MEDIUM,
+            "The maximum number of records to put in a single file. "
+                + "Must be a non-negative integer number. "
+                + "0 is interpreted as \"unlimited\", which is the default.",
+            GROUP_FILE,
+            fileGroupCounter++,
+            ConfigDef.Width.SHORT,
+            FILE_MAX_RECORDS
+        );
+
+        configDef.define(
+            FILE_NAME_TIMESTAMP_TIMEZONE,
+            ConfigDef.Type.STRING,
+            ZoneOffset.UTC.toString(),
+            new TimeZoneValidator(),
+            ConfigDef.Importance.LOW,
+            "Specifies the timezone in which the dates and time for the timestamp variable will be treated. "
+                + "Use standard shot and long names. Default is UTC",
+            GROUP_FILE,
+            fileGroupCounter++,
+            ConfigDef.Width.SHORT,
+            FILE_NAME_TIMESTAMP_TIMEZONE
+        );
+
+        configDef.define(
+            FILE_NAME_TIMESTAMP_SOURCE,
+            ConfigDef.Type.STRING,
+            TimestampSource.Type.WALLCLOCK.name(),
+            new TimestampSourceValidator(),
+            ConfigDef.Importance.LOW,
+            "Specifies the the timestamp variable source. Default is wall-clock.",
+            GROUP_FILE,
+            fileGroupCounter,
+            ConfigDef.Width.SHORT,
+            FILE_NAME_TIMESTAMP_SOURCE
         );
     }
 
@@ -424,6 +500,16 @@ public class S3SinkConfig extends AivenCommonConfig {
                     AWS_S3_PREFIX_CONFIG,
                     AWS_S3_PREFIX)
             );
+        }
+
+        // Special checks for {{key}} filename template.
+        final Template filenameTemplate = getFilenameTemplate();
+        if (RecordGrouperFactory.KEY_RECORD.equals(RecordGrouperFactory.resolveRecordGrouperType(filenameTemplate))) {
+            if (getMaxRecordsPerFile() > 1) {
+                final String msg = String.format("When %s is %s, %s must be either 1 or not set",
+                    FILE_NAME_TEMPLATE_CONFIG, filenameTemplate, FILE_MAX_RECORDS);
+                throw new ConfigException(msg);
+            }
         }
     }
 

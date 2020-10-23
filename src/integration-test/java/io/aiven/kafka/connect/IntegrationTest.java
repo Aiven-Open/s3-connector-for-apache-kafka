@@ -171,6 +171,7 @@ final class IntegrationTest implements KafkaIntegrationBase {
         }
     }
 
+
     @Test
     final void jsonlOutputTest() throws ExecutionException, InterruptedException, IOException {
         final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(CONNECTOR_NAME));
