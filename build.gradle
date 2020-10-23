@@ -126,9 +126,11 @@ dependencies {
     testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
     testImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
     testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
-    testImplementation 'io.findify:s3mock_2.11:0.2.3'
+    testImplementation "io.findify:s3mock_2.11:0.2.6"
     testImplementation "org.hamcrest:hamcrest:2.1"
     testImplementation "org.mockito:mockito-core:3.3.3"
+    testImplementation "net.jqwik:jqwik:1.1.5"
+    testImplementation "net.jqwik:jqwik-engine:1.1.5"
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 

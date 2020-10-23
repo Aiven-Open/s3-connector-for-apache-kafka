@@ -17,14 +17,15 @@
 package io.aiven.kafka.connect.s3.testutils;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
@@ -32,18 +33,30 @@ import java.util.zip.GZIPInputStream;
 import io.aiven.kafka.connect.common.config.CompressionType;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.github.luben.zstd.ZstdInputStream;
 import org.xerial.snappy.SnappyInputStream;
 
+public final class BucketAccessor {
 
-public class BucketAccessor {
+    private final boolean cache;
 
     private final String bucketName;
     private final AmazonS3 s3;
 
-    public BucketAccessor(final AmazonS3 s3, final String bucketName) {
+    private List<String> blobNamesCache = null;
+    private final Map<String, List<String>> linesCache = new HashMap<>();
+    private final Map<String, List<List<String>>> decodedLinesCache = new HashMap<>();
+
+    public BucketAccessor(final AmazonS3 s3,
+                          final String bucketName,
+                          final boolean cache) {
+        Objects.requireNonNull(s3, "storage cannot be null");
+        Objects.requireNonNull(bucketName, "bucketName cannot be null");
         this.bucketName = bucketName;
         this.s3 = s3;
+        this.cache = cache;
     }
 
     public final void createBucket() {
@@ -56,35 +69,50 @@ public class BucketAccessor {
 
     public final List<List<String>> readAndDecodeLines(final String blobName,
                                                        final String compression,
-                                                       final int... fieldsToDecode) throws IOException {
+                                                       final int... fieldsToDecode) {
         Objects.requireNonNull(blobName, "blobName cannot be null");
         Objects.requireNonNull(fieldsToDecode, "fieldsToDecode cannot be null");
-
-        return readAndDecodeLines0(blobName, compression, fieldsToDecode);
+        if (cache) {
+            return decodedLinesCache.computeIfAbsent(
+                blobName,
+                k -> readAndDecodeLines0(blobName, compression, fieldsToDecode));
+        } else {
+            return readAndDecodeLines0(blobName, compression, fieldsToDecode);
+        }
     }
 
     private List<List<String>> readAndDecodeLines0(final String blobName,
                                                    final String compression,
-                                                   final int[] fieldsToDecode) throws IOException {
+                                                   final int[] fieldsToDecode) {
         return readLines(blobName, compression).stream()
             .map(l -> l.split(","))
             .map(fields -> decodeRequiredFields(fields, fieldsToDecode))
             .collect(Collectors.toList());
     }
 
-    public final List<String> readLines(final String blobName, final String compression) throws IOException {
+    public final List<String> readLines(final String blobName, final String compression) {
         Objects.requireNonNull(blobName, "blobName cannot be null");
-        final byte[] blobBytes = s3.getObject(bucketName, blobName).getObjectContent().readAllBytes();
+        if (cache) {
+            return linesCache.computeIfAbsent(blobName, k -> readLines0(blobName, compression));
+        } else {
+            return readLines0(blobName, compression);
+        }
+    }
 
-        try (final ByteArrayInputStream bais = new ByteArrayInputStream(blobBytes)) {
-            final InputStream decompressedStream = getDecompressedStream(bais, compression);
+    private List<String> readLines0(final String blobName, final String compression) {
+        Objects.requireNonNull(blobName, "blobName cannot be null");
+        try (
+            final S3ObjectInputStream s3ois = s3.getObject(bucketName, blobName).getObjectContent();
+            final InputStream decompressedStream = getDecompressedStream(s3ois, compression);
             final InputStreamReader reader = new InputStreamReader(decompressedStream, StandardCharsets.UTF_8);
-            final BufferedReader bufferedReader = new BufferedReader(reader);
+            final BufferedReader bufferedReader = new BufferedReader(reader)) {
+
             return bufferedReader.lines().collect(Collectors.toList());
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
     }
+
 
     private InputStream getDecompressedStream(final InputStream inputStream, final String compression)
         throws IOException {
@@ -104,6 +132,7 @@ public class BucketAccessor {
         }
     }
 
+
     private List<String> decodeRequiredFields(final String[] originalFields, final int[] fieldsToDecode) {
         Objects.requireNonNull(originalFields, "originalFields cannot be null");
         Objects.requireNonNull(fieldsToDecode, "fieldsToDecode cannot be null");
@@ -121,4 +150,19 @@ public class BucketAccessor {
         return new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
     }
 
+    public final List<String> getBlobNames() {
+        if (cache) {
+            if (blobNamesCache == null) {
+                blobNamesCache = getBlobNames0();
+            }
+            return blobNamesCache;
+        } else {
+            return getBlobNames0();
+        }
+    }
+
+    private List<String> getBlobNames0() {
+        final List<S3ObjectSummary> objectSummaries = s3.listObjects(bucketName).getObjectSummaries();
+        return objectSummaries.stream().map(S3ObjectSummary::getKey).sorted().collect(Collectors.toList());
+    }
 }

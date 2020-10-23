@@ -93,7 +93,7 @@ final class IntegrationTest implements KafkaIntegrationBase {
 
         final AmazonS3 s3 = TestUtils.getClientS3();
         s3Endpoint = Localstack.INSTANCE.getEndpointS3();
-        testBucketAccessor = new BucketAccessor(s3, TEST_BUCKET_NAME);
+        testBucketAccessor = new BucketAccessor(s3, TEST_BUCKET_NAME, false);
         testBucketAccessor.createBucket();
 
         pluginDir = KafkaIntegrationBase.getPluginDir();

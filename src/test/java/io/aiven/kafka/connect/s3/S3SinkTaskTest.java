@@ -132,7 +132,7 @@ public class S3SinkTaskTest {
 
         s3Client = builder.build();
 
-        testBucketAccessor = new BucketAccessor(s3Client, TEST_BUCKET);
+        testBucketAccessor = new BucketAccessor(s3Client, TEST_BUCKET, false);
         testBucketAccessor.createBucket();
     }
 
