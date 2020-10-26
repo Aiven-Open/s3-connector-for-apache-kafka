@@ -66,10 +66,17 @@ repositories {
     maven {
         url "http://dl.bintray.com/aiven/maven"
     }
+    // For kafka-avro-serializer and kafka-connect-avro-converter
+    maven {
+        url "https://packages.confluent.io/maven"
+    }
 }
 
 ext {
     kafkaVersion = "1.1.0"
+    // Compatible with Kafka version:
+    // https://docs.confluent.io/current/installation/versions-interoperability.html
+    confluentPlatformVersion = "4.1.4"
     amazonS3Version = "1.11.718"
     slf4jVersion = "1.7.25"
     aivenConnectCommonsVersion = "0.2.0"
@@ -138,6 +145,9 @@ dependencies {
     integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
+    integrationTestImplementation "io.confluent:kafka-avro-serializer:$confluentPlatformVersion"
+    integrationTestImplementation "io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion"
+    integrationTestImplementation "org.apache.avro:avro:1.8.1"
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
 
