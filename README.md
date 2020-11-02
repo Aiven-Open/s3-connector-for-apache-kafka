@@ -18,6 +18,161 @@ The connector needs the following permissions to the specified bucket:
 
 In case of ``Access Denied`` error see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
 
+### File name format
+
+The connector uses the following format for output files (blobs):
+`<prefix><filename>`.
+
+`<prefix>`is the optional prefix that can be used, for example, for
+subdirectories in the bucket. 
+`<filename>` is the file name. The connector has the configurable
+template for file names. 
+
+    Configuration property `file.name.template`. If not set, default template is used: `{{topic}}-{{partition}}-{{start_offset}}`
+
+It supports placeholders with variable names:
+`{{ variable_name }}`. Currently supported variables are:
+- `topic` - the Kafka topic;
+- `partition` - the Kafka partition;
+- `start_offset:padding=true|false` - the Kafka offset of the first record in the file, if `padding` sets to `true` will set leading zeroes for offset, default is `false`;
+- `timestamp:unit=YYYY|MM|dd|HH` - the timestamp of when the Kafka record has been processed by the connector.
+   - `unit` parameter values:
+     - `YYYY` - year, e.g. `2020`
+     - `MM` - month, e.g. `03`
+     - `dd` - day, e.g. `01`
+     - `HH` - hour, e.g. `24` 
+- `key` - the Kafka key.
+
+
+To add zero padding to Kafka offsets, you need to add additional parameter `padding` in the `start_offset` variable, 
+which value can be `true` or `false` (the default). 
+For example: `{{topic}}-{{partition}}-{{start_offset:padding=true}}.gz` 
+will produce file names like `mytopic-1-00000000000000000001.gz`.
+
+To add formatted timestamps, use `timestamp` variable.<br/>
+For example: `{{topic}}-{{partition}}-{{start_offset}}-{{timestamp:unit=YYYY}}{{timestamp:unit=MM}}{{timestamp:unit=dd}}.gz` 
+will produce file names like `mytopic-2-1-20200301.gz`.
+
+To configure the time zone for the `timestamp` variable,
+use `file.name.timestamp.timezone` property. 
+Please see the description of properties in the "Configuration" section.
+
+Only the certain combinations of variables and parameters are allowed in the file name
+template (however, variables in a template can be in any order). Each
+combination determines the mode of record grouping the connector will
+use. Currently supported combinations of variables and the corresponding
+record grouping modes are:
+- `topic`, `partition`, `start_offset`, and `timestamp` - grouping by the topic,
+  partition, and timestamp;
+- `key` - grouping by the key.
+
+If the file name template is not specified, the default value is
+`{{topic}}-{{partition}}-{{start_offset}}` (+ `.gz` when compression is
+enabled).
+
+### Record grouping
+
+Incoming records are being grouped until flushed.
+
+#### Grouping by the topic and partition
+
+In this mode, the connector groups records by the topic and partition.
+When a file is written, a offset of the first record in it is added to
+its name.
+
+For example, let's say the template is
+`{{topic}}-part{{partition}}-off{{start_offset}}`. If the connector
+receives records like
+```
+topic:topicB partition:0 offset:0
+topic:topicA partition:0 offset:0
+topic:topicA partition:0 offset:1
+topic:topicB partition:0 offset:1
+flush
+```
+
+there will be two files `topicA-part0-off0` and `topicB-part0-off0` with
+two records in each.
+
+Each `flush` produces a new set of files. For example:
+
+```
+topic:topicA partition:0 offset:0
+topic:topicA partition:0 offset:1
+flush
+topic:topicA partition:0 offset:2
+topic:topicA partition:0 offset:3
+flush
+```
+
+In this case, there will be two files `topicA-part0-off0` and
+`topicA-part0-off2` with two records in each.
+
+#### Grouping by the key
+
+In this mode, the connector groups records by the Kafka key. It always
+puts one record in a file, the latest record that arrived before a flush
+for each key. Also, it overwrites files if later new records with the
+same keys arrive.
+
+This mode is good for maintaining the latest values per key as files on
+GCS.
+
+Let's say the template is `k{{key}}`. For example, when the following
+records arrive
+```
+key:0 value:0
+key:1 value:1
+key:0 value:2
+key:1 value:3
+flush
+```
+
+there will be two files `k0` (containing value `2`) and `k1` (containing
+value `3`).
+
+After a flush, previously written files might be overwritten:
+```
+key:0 value:0
+key:1 value:1
+key:0 value:2
+key:1 value:3
+flush
+key:0 value:4
+flush
+```
+
+In this case, there will be two files `k0` (containing value `4`) and
+`k1` (containing value `3`).
+
+##### The string representation of a key
+
+The connector in this mode uses the following algorithm to create the
+string representation of a key:
+
+1. If `key` is `null`, the string value is `"null"` (i.e., string
+   literal `null`).
+2. If `key` schema type is `STRING`, it's used directly.
+3. Otherwise, Java `.toString()` is applied.
+
+If keys of you records are strings, you may want to use
+`org.apache.kafka.connect.storage.StringConverter` as `key.converter`.
+
+##### Warning: Single key in different partitions
+
+The `group by key` mode primarily targets scenarios where each key
+appears in one partition only. If the same key appears in multiple
+partitions the result may be unexpected.
+
+For example:
+```
+topic:topicA partition:0 key:x value:aaa
+topic:topicA partition:1 key:x value:bbb
+flush
+```
+file `kx` may contain `aaa` or `bbb`, i.e. the behavior is
+non-deterministic.
+
 ## Data Format
 
 Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector`.
@@ -125,63 +280,14 @@ List of new configuration parameters:
 - `aws.secret.access.key` - AWS S3 Secret Access Key. Mandatory.
 - `aws.s3.bucket.name` - - Name of an existing bucket for storing the records. Mandatory.
 - `aws.s3.endpoint` - The endpoint configuration (service endpoint & signing region) to be used for requests.
-- `aws.s3.prefix` - The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
-- `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`. 
+- `aws.s3.prefix` - [Deprecated] Use `file.name.prefix` and `file.name.template` instead. The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
+- `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`.
+- `file.name.template` - The file name. The connector has the configurable template for file names. Constant string prefix could be added to the file name to put output files into a subdirectory.
 - `file.compression.type` - Compression type for output files. Supported algorithms are `gzip`, `snappy`, `zstd` and `none`. Defaults to `gzip`.
 - `format.output.fields` - A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
 - `format.output.fields.value.encoding` - Controls encoding of `value` field. Possible values are: `base64` and `none`. Defaults: `base64`
 - `timestamp.timezone` - The time zone in which timestamps are represented. Accepts short and long standard names like: `UTC`, `PST`, `ECT`, `Europe/Berlin`, `Europe/Helsinki`, or `America/New_York`. For more information please refer to https://docs.oracle.com/javase/tutorial/datetime/iso/timezones.html. The default is `UTC`.
 - `timestamp.source` -  The source of timestamps. Supports only `wallclock` which is the default value.
-
-##### Prefix Templating
-The parameter `aws_s3_prefix` or `aws.s3.prefix` supports templating using `{{ var }}` for variables that will be substituted with values.
-
-```
-curl -X POST \
-    -H "Content-Type: application/json" \
-    -d @- \
-    https://avnadmin:password@demo-kafka.aivencloud.com:17070/connectors <<EOF
-        {
-            "name": "example-s3-sink",
-            "config": {
-                "aws_access_key_id": "AKI...",
-                "aws_secret_access_key": "SECRET_ACCESS_KEY",
-                "aws_s3_bucket": "aiven-example",
-                "aws_s3_prefix": "example-s3-sink/",
-                "aws_s3_region": "us-east-1",
-                "connector.class": "io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector",
-                "format.output.type": "jsonl"
-                "key.converter": "org.apache.kafka.connect.storage.StringConverter",
-                "output_compression": "gzip",
-                "output_fields": "value,key,timestamp",
-                "tasks.max": 1,
-                "topics": "source_topic,another_topic",
-                "value.converter": "org.apache.kafka.connect.json.JsonConverter"
-                "value.converter.schemas.enable": false
-            }
-        }
-    EOF
-```
-
-Currently supported variables are:
-- `topic` - the Kafka topic;
-- `partition` - the Kafka partition;
-- `start_offset:padding=true|false` - the Kafka offset of the first record in the file, if `padding` sets to `true` will set leading zeroes for offset, default is `false`;
-- `timestamp:unit=YYYY|MM|dd|HH` - the timestamp of when the Kafka record has been processed by the connector.
-   - `unit` parameter values:
-     - `YYYY` - year, e.g. `2020`
-     - `MM` - month, e.g. `03`
-     - `dd` - day, e.g. `01`
-     - `HH` - hour, e.g. `24` 
-
-These two variables are deprecated:
-- `utc_date` - the current date in UTC time zone and formatted in ISO 8601 format, e.g. `2019-03-26`
-- `local_date` - the current date in the local time zone and formatted in ISO 8601 format, e.g. `2019-03-26`
-please use the `timestamp` instead which described above
-
-Examples:
-- Kafka offsets with zero padding: `{{topc}}/{{partition}}/{{start_offset:padding=true}}`, generates: `some_topic/1/00000000000000000001`
-- Timestamp: `{{timestamp:unit=YYYY}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/{{timestamp:unit=HH}}`, generates: `2020/03/01/00`
 
 ## Configuration
 
@@ -233,8 +339,8 @@ aws.secret.access.key=YOUR_AWS_SECRET_ACCESS_KEY
 #AWS Region
 aws.s3.region=us-east-1
 
-#S3 prefix template
-aws.s3.prefix=your-prefix/{{topic}}/
+#File name template
+file.name.template=dir1/dir2/{{topic}}-{{partition}}-{{start_offset:padding=true}}.gz
 
 #The name of the S3 bucket to use
 #Required.

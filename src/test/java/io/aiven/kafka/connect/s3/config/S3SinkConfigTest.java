@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.aiven.kafka.connect.common.config;
+package io.aiven.kafka.connect.s3.config;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -26,6 +26,12 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigException;
 
+import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.common.config.FormatType;
+import io.aiven.kafka.connect.common.config.FormatterUtils;
+import io.aiven.kafka.connect.common.config.OutputField;
+import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
+import io.aiven.kafka.connect.common.config.OutputFieldType;
 import io.aiven.kafka.connect.s3.S3SinkConfig;
 
 import com.amazonaws.regions.Regions;
@@ -410,55 +416,6 @@ class S3SinkConfigTest {
         );
     }
 
-    @Test
-    void emptyAwsSettingsForOldStyleAndNewStyleProperties() {
-        final Map<String, String> props = new HashMap<>();
-        props.put(AWS_S3_BUCKET, "blah-blah-blah");
-        props.put(AWS_S3_REGION, Regions.US_WEST_1.getName());
-        props.put(AWS_S3_PREFIX, "blah-blah-blah");
-
-        Throwable t =
-            assertThrows(
-                ConfigException.class,
-                () -> new S3SinkConfig(props)
-            );
-
-        assertEquals(
-            "Neither aws.access.key.id nor aws_access_key_id properties have been set",
-            t.getMessage()
-        );
-
-        props.clear();
-
-        props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
-        props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
-        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_WEST_1.getName());
-        props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "blah-blah-blah");
-
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Neither aws.s3.bucket.name nor aws_s3_bucket properties have been set",
-            t.getMessage()
-        );
-
-        props.clear();
-        props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
-        props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah");
-        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_WEST_1.getName());
-
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Neither aws.s3.prefix nor aws_s3_prefix properties have been set",
-            t.getMessage()
-        );
-    }
 
     @Test
     void emptyOutputField() {
@@ -639,7 +596,6 @@ class S3SinkConfigTest {
 
     @Test
     void shouldBuildPrefixTemplate() {
-
         final var prefix = "{{timestamp:unit=YYYY}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/";
 
         final Map<String, String> props = new HashMap<>();

@@ -31,8 +31,14 @@ import java.util.zip.GZIPInputStream;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
 
+import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.DeleteObjectsRequest;
+import com.amazonaws.services.s3.model.MultiObjectDeleteException;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.github.luben.zstd.ZstdInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xerial.snappy.SnappyInputStream;
 
 
@@ -41,6 +47,8 @@ public class BucketAccessor {
     private final String bucketName;
     private final AmazonS3 s3;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(BucketAccessor.class);
+
     public BucketAccessor(final AmazonS3 s3, final String bucketName) {
         this.bucketName = bucketName;
         this.s3 = s3;
@@ -48,6 +56,29 @@ public class BucketAccessor {
 
     public final void createBucket() {
         s3.createBucket(bucketName);
+    }
+
+    public final void removeBucket() {
+        final var chunk = s3.listObjects(bucketName)
+                                          .getObjectSummaries()
+                                          .stream()
+                                          .map(S3ObjectSummary::getKey)
+                                          .toArray(String[]::new);
+
+        final var deleteObjectsRequest =
+            new DeleteObjectsRequest(bucketName).withKeys(chunk);
+        try {
+            s3.deleteObjects(deleteObjectsRequest);
+        } catch (final MultiObjectDeleteException e) {
+            for (final var err : e.getErrors()) {
+                LOGGER.warn(String.format("Couldn't delete object: %s. Reason: [%s] %s",
+                    err.getKey(), err.getCode(), err.getMessage()));
+            }
+        } catch (final AmazonClientException e) {
+            LOGGER.error("Couldn't delete objects: "
+                +   Arrays.stream(chunk).reduce(" ", String::concat) + e.getMessage());
+        }
+        s3.deleteBucket(bucketName);
     }
 
     public final Boolean doesObjectExist(final String objectName) {
@@ -120,5 +151,4 @@ public class BucketAccessor {
 
         return new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
     }
-
 }
