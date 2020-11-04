@@ -19,17 +19,10 @@ package io.aiven.kafka.connect;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 
 import org.testcontainers.containers.KafkaContainer;
 
@@ -48,36 +41,6 @@ public interface KafkaIntegrationBase {
         return new ConnectRunner(pluginDir, kafka.getBootstrapServers(), offsetFlushIntervalMs);
     }
 
-    default KafkaProducer<byte[], byte[]> newProducer(final KafkaContainer kafka) {
-        final Map<String, Object> producerProps = new HashMap<>();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
-        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-            "org.apache.kafka.common.serialization.ByteArraySerializer");
-        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-            "org.apache.kafka.common.serialization.ByteArraySerializer");
-        return new KafkaProducer<>(producerProps);
-    }
-
-    default Future<RecordMetadata> sendMessageAsync(final KafkaProducer<byte[], byte[]> producer,
-                                                    final String topicName,
-                                                    final int partition,
-                                                    final String key,
-                                                    final String value) {
-        final ProducerRecord<byte[], byte[]> msg = new ProducerRecord<>(
-            topicName, partition,
-            key == null ? null : key.getBytes(),
-            value == null ? null : value.getBytes());
-        return producer.send(msg);
-    }
-
-    default Map<String, String> basicConnectorConfig(final String connectorName) {
-        final Map<String, String> config = new HashMap<>();
-        config.put("name", connectorName);
-        config.put("key.converter", "org.apache.kafka.connect.converters.ByteArrayConverter");
-        config.put("value.converter", "org.apache.kafka.connect.converters.ByteArrayConverter");
-        config.put("tasks.max", "1");
-        return config;
-    }
 
     static void extractConnectorPlugin(File pluginDir) throws IOException, InterruptedException {
         final File distFile = new File(System.getProperty("integration-test.distribution.file.path"));

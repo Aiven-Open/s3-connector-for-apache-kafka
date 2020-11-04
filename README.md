@@ -249,9 +249,10 @@ OR
 
 It is recommended to use
 - `org.apache.kafka.connect.storage.StringConverter` or 
-- `org.apache.kafka.connect.json.JsonConverter`
+- `org.apache.kafka.connect.json.JsonConverter` or
+- `io.confluent.connect.avro.AvroConverter`.
 
-as `key.converter` or `value.converter` to make an output file human-readable.
+as `key.converter` and/or `value.converter` to make output files human-readable.
 
 **NB!**
 
