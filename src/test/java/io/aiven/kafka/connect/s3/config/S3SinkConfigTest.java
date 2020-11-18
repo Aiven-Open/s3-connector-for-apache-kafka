@@ -28,10 +28,10 @@ import org.apache.kafka.common.config.ConfigException;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.common.config.FormatType;
-import io.aiven.kafka.connect.common.config.FormatterUtils;
 import io.aiven.kafka.connect.common.config.OutputField;
 import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
 import io.aiven.kafka.connect.common.config.OutputFieldType;
+import io.aiven.kafka.connect.s3.OldFullKeyFormatters;
 import io.aiven.kafka.connect.s3.S3SinkConfig;
 
 import com.amazonaws.regions.Regions;
@@ -616,7 +616,7 @@ class S3SinkConfigTest {
             config.getPrefixTemplate()
                 .instance()
                 .bindVariable("timestamp", parameter ->
-                    FormatterUtils.formatTimestamp.apply(config.getTimestampSource(), parameter))
+                    OldFullKeyFormatters.TIMESTAMP.apply(config.getTimestampSource(), parameter))
                 .render();
 
         assertEquals(

@@ -34,8 +34,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 
-import io.aiven.kafka.connect.common.config.FormatterUtils;
-import io.aiven.kafka.connect.common.config.Variables;
+import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
 import io.aiven.kafka.connect.common.grouper.RecordGrouper;
 import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.output.OutputWriter;
@@ -193,18 +192,18 @@ public class S3SinkTask extends SinkTask {
             config.getPrefixTemplate()
                 .instance()
                 .bindVariable(
-                    Variables.TIMESTAMP.name,
-                    parameter -> FormatterUtils.formatTimestamp.apply(config.getTimestampSource(), parameter)
+                    FilenameTemplateVariable.TIMESTAMP.name,
+                    parameter -> OldFullKeyFormatters.TIMESTAMP.apply(config.getTimestampSource(), parameter)
                 )
                 .bindVariable(
-                    Variables.PARTITION.name,
+                    FilenameTemplateVariable.PARTITION.name,
                     () -> record.kafkaPartition().toString()
                 )
                 .bindVariable(
-                    Variables.START_OFFSET.name,
-                    parameter -> FormatterUtils.formatKafkaOffset.apply(record, parameter)
+                    FilenameTemplateVariable.START_OFFSET.name,
+                    parameter -> OldFullKeyFormatters.KAFKA_OFFSET.apply(record, parameter)
                 )
-                .bindVariable(Variables.TOPIC.name, record::topic)
+                .bindVariable(FilenameTemplateVariable.TOPIC.name, record::topic)
                 .bindVariable(
                     "utc_date",
                     () -> ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -219,7 +218,7 @@ public class S3SinkTask extends SinkTask {
                 "%s-%s-%s",
                 record.topic(),
                 record.kafkaPartition(),
-                FormatterUtils.formatKafkaOffset.apply(
+                OldFullKeyFormatters.KAFKA_OFFSET.apply(
                     record, VariableTemplatePart.Parameter.of("padding", "true")
                 )
             );
