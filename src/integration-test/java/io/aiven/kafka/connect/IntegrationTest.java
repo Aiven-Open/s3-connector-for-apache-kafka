@@ -441,6 +441,77 @@ final class IntegrationTest implements KafkaIntegrationBase {
         }
     }
 
+    @Test
+    final void jsonOutput() throws ExecutionException, InterruptedException, IOException {
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(CONNECTOR_NAME));
+        final String compression = "none";
+        final String contentType = "json";
+        connectorConfig.put("format.output.fields", "key,value");
+        connectorConfig.put("format.output.fields.value.encoding", "none");
+        connectorConfig.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
+        connectorConfig.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
+        connectorConfig.put("value.converter.schemas.enable", "false");
+        connectorConfig.put("file.compression.type", compression);
+        connectorConfig.put("format.output.type", contentType);
+        connectRunner.createConnector(connectorConfig);
+
+        final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
+
+        final int numEpochs = 10;
+
+        final IndexesToString keyGen = (partition, epoch, currIdx) -> "key-" + currIdx;
+        final IndexesToString valueGen = (partition, epoch, currIdx) -> "[{" + "\"name\":\"user-" + currIdx + "\"}]";
+
+        for (final KeyValueMessage msg : new KeyValueGenerator(4, numEpochs, keyGen, valueGen)) {
+            sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, msg.partition, msg.key, msg.value));
+        }
+
+        producer.flush();
+        for (final Future<RecordMetadata> sendFuture : sendFutures) {
+            sendFuture.get();
+        }
+
+        // TODO more robust way to detect that Connect finished processing
+        Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
+
+        final List<String> expectedBlobs = Arrays.asList(
+            getNewBlobName(0, 0, compression),
+            getNewBlobName(1, 0, compression),
+            getNewBlobName(2, 0, compression),
+            getNewBlobName(3, 0, compression));
+        for (final String blobName : expectedBlobs) {
+            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+        }
+
+        final Map<String, List<String>> blobContents = new HashMap<>();
+        for (final String blobName : expectedBlobs) {
+            final List<String> items = new ArrayList<>(testBucketAccessor.readLines(blobName, compression));
+            blobContents.put(blobName, items);
+        }
+
+        // Each blob must be a JSON array.
+        final Map<String, List<String>> jsonContents = new HashMap<>();
+        for (int partition = 0; partition < 4; partition++) {
+            final String blobName = getNewBlobName(partition, 0, compression);
+            final List<String> blobContent = blobContents.get(blobName);
+            assertEquals("[", blobContent.get(0));
+            assertEquals("]", blobContent.get(blobContent.size() - 1));
+            jsonContents.put(blobName, blobContent.subList(1, blobContent.size() - 1));
+        }
+
+        for (final KeyValueMessage msg : new KeyValueGenerator(4, numEpochs, keyGen, valueGen)) {
+            final String blobName = getNewBlobName(msg.partition, 0, compression);
+            final String actualLine = blobContents.get(blobName).get(msg.epoch + 1);  // 0 is '['
+
+            String expectedLine = "{\"value\":" + msg.value + ",\"key\":\"" + msg.key + "\"}";
+            if (actualLine.endsWith(",")) {
+                expectedLine += ",";
+            }
+
+            assertEquals(expectedLine, actualLine);
+        }
+    }
+
     private KafkaProducer<byte[], byte[]> newProducer(final KafkaContainer kafka) {
         final Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());

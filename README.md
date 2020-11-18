@@ -197,6 +197,10 @@ There are two types of data format available:
     It contains one record per line and each line is a valid JSON object(`jsonl`)
 
     Configuration: ```format.output.type=jsonl```. 
+    
+ - Complex structure, where file is a valid JSON array of record objects. 
+  
+     Configuration: ```format.output.type=json```. 
 
 The connector can output the following fields from records into the
 output: the key, the value, the timestamp, and the offset. (The set and the order of
@@ -259,6 +263,39 @@ as `key.converter` and/or `value.converter` to make output files human-readable.
  - The value of the `format.output.fields.value.encoding` property is ignored for this data format.
  - Value/Key schema will not be presented in output file, even if `value.converter.schemas.enable` property is `true`.
  But, it is still important to set this property correctly, so that connector could read records correctly. 
+ 
+#### JSON Format example
+
+For example, if we output `key,value,offset,timestamp`, an output file might look like:
+
+```
+[
+{ "key": "k1", "value": "v0", "offset": 1232155, "timestamp":"2020-01-01T00:00:01Z" },
+{ "key": "k2", "value": "v1", "offset": 1232156, "timestamp":"2020-01-01T00:00:05Z" }
+]
+```
+
+OR
+
+```
+[
+{ "key": "user1", "value": {"name": "John", "address": {"city": "London"}}, "offset": 1232155, "timestamp":"2020-01-01T00:00:01Z" }
+]
+```
+
+It is recommended to use
+- `org.apache.kafka.connect.storage.StringConverter`, 
+- `org.apache.kafka.connect.json.JsonConverter`, or
+- `io.confluent.connect.avro.AvroConverter`.
+ 
+as `key.converter` and/or `value.converter` to make output files human-readable.
+
+**NB!**
+
+ - The value of the `format.output.fields.value.encoding` property is ignored for this data format.
+ - Value/Key schema will not be presented in output file, even if `value.converter.schemas.enable` property is `true`.
+ But, it is still important to set this property correctly, so that connector could read records correctly. 
+
 ## Usage
 
 ### Connector Configuration
