@@ -40,7 +40,8 @@ import io.aiven.kafka.connect.common.grouper.RecordGrouper;
 import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.output.OutputWriter;
 import io.aiven.kafka.connect.common.output.jsonwriter.JsonLinesOutputWriter;
-import io.aiven.kafka.connect.common.output.plainwriter.OutputPlainWriter;
+import io.aiven.kafka.connect.common.output.jsonwriter.JsonOutputWriter;
+import io.aiven.kafka.connect.common.output.plainwriter.PlainOutputWriter;
 import io.aiven.kafka.connect.common.templating.VariableTemplatePart;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -59,8 +60,6 @@ public class S3SinkTask extends SinkTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(AivenKafkaConnectS3SinkConnector.class);
 
     private RecordGrouper recordGrouper;
-
-    private OutputWriter outputWriter;
 
     private S3SinkConfig config;
 
@@ -94,7 +93,6 @@ public class S3SinkTask extends SinkTask {
             s3ClientBuilder.withEndpointConfiguration(awsEndpointConfig).withPathStyleAccessEnabled(true);
         }
         s3Client = s3ClientBuilder.build();
-        outputWriter = getOutputWriter();
 
         try {
             recordGrouper = RecordGrouperFactory.newRecordGrouper(config);
@@ -103,12 +101,14 @@ public class S3SinkTask extends SinkTask {
         }
     }
 
-    private OutputWriter getOutputWriter() {
+    private OutputWriter getOutputWriter(final OutputStream outputStream) {
         switch (this.config.getFormatType()) {
             case CSV:
-                return OutputPlainWriter.builder().addFields(config.getOutputFields()).build();
+                return new PlainOutputWriter(config.getOutputFields(), outputStream);
             case JSONL:
-                return JsonLinesOutputWriter.builder().addFields(config.getOutputFields()).build();
+                return new JsonLinesOutputWriter(config.getOutputFields(), outputStream);
+            case JSON:
+                return new JsonOutputWriter(config.getOutputFields(), outputStream);
             default:
                 throw new ConnectException("Unsupported format type " + config.getFormatType());
         }
@@ -134,11 +134,11 @@ public class S3SinkTask extends SinkTask {
         }
         final SinkRecord sinkRecord = records.get(0);
         try (final OutputStream compressedStream = newStreamFor(filename, sinkRecord)) {
-            for (int i = 0; i < records.size() - 1; i++) {
-                outputWriter.writeRecord(records.get(i), compressedStream);
-                compressedStream.flush();
+            try (final OutputWriter outputWriter = getOutputWriter(compressedStream)) {
+                for (final SinkRecord record: records) {
+                    outputWriter.writeRecord(record);
+                }
             }
-            outputWriter.writeLastRecord(records.get(records.size() - 1), compressedStream);
         } catch (final IOException e) {
             throw new ConnectException(e);
         }

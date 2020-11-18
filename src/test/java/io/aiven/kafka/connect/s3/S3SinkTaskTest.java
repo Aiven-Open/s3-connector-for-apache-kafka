@@ -498,6 +498,45 @@ public class S3SinkTaskTest {
             testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression));
     }
 
+    @Test
+    final void supportStructValuesForClassicJson() throws IOException {
+        final S3SinkTask task = new S3SinkTask();
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "json");
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
+            createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
+            createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
+        );
+
+        task.put(records);
+        task.flush(null);
+
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        final List<String> expectedBlobs = Lists.newArrayList(
+            "topic0-0-10" + compressionType.extension(),
+            "topic0-1-20" + compressionType.extension(),
+            "topic1-0-30" + compressionType.extension()
+        );
+        for (final String blobName : expectedBlobs) {
+            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+        }
+
+        assertIterableEquals(
+            Arrays.asList("[", "{\"value\":{\"name\":\"name0\"},\"key\":\"key0\"}", "]"),
+            testBucketAccessor.readLines("topic0-0-10", compression));
+        assertIterableEquals(
+            Arrays.asList("[", "{\"value\":{\"name\":\"name1\"},\"key\":\"key1\"}", "]"),
+            testBucketAccessor.readLines("topic0-1-20", compression));
+        assertIterableEquals(
+            Arrays.asList("[", "{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}", "]"),
+            testBucketAccessor.readLines("topic1-0-30", compression));
+    }
 
     private SinkRecord createRecordWithStringValueSchema(final String topic,
                                                          final int partition,

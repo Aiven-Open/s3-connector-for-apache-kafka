@@ -631,7 +631,7 @@ class S3SinkConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"jsonl", "csv"})
+    @ValueSource(strings = {"jsonl", "json", "csv"})
     void supportedFormatTypeConfig(final String formatType) {
         final Map<String, String> properties = new HashMap<>();
         properties.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id");
@@ -658,7 +658,7 @@ class S3SinkConfigTest {
         );
         assertEquals(
             "Invalid value unknown for configuration format.output.type: "
-                + "supported values are: 'csv', 'jsonl'", t.getMessage());
+                + "supported values are: 'csv', 'json', 'jsonl'", t.getMessage());
 
     }
 
