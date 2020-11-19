@@ -594,9 +594,15 @@ class S3SinkConfigTest {
             t.getMessage());
     }
 
-    @Test
-    void shouldBuildPrefixTemplate() {
-        final var prefix = "{{timestamp:unit=YYYY}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/";
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void shouldBuildPrefixTemplate(final boolean yyyyUppercase) {
+        final String prefix;
+        if (yyyyUppercase) {
+            prefix = "{{timestamp:unit=YYYY}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/";
+        } else {
+            prefix = "{{timestamp:unit=yyyy}}/{{timestamp:unit=MM}}/{{timestamp:unit=dd}}/";
+        }
 
         final Map<String, String> props = new HashMap<>();
         props.put(AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
@@ -622,7 +628,7 @@ class S3SinkConfigTest {
         assertEquals(
             String.format(
                 "%s/%s/%s/",
-                expectedTimestamp.format(DateTimeFormatter.ofPattern("YYYY")),
+                expectedTimestamp.format(DateTimeFormatter.ofPattern("yyyy")),
                 expectedTimestamp.format(DateTimeFormatter.ofPattern("MM")),
                 expectedTimestamp.format(DateTimeFormatter.ofPattern("dd"))
             ),
@@ -662,4 +668,26 @@ class S3SinkConfigTest {
 
     }
 
+    @Test
+    void notSupportYyyyUppercaseInFilenameTemplate() {
+        final Map<String, String> properties =
+            Map.of(
+                S3SinkConfig.FILE_NAME_TEMPLATE_CONFIG,
+                "{{topic}}-"
+                    + "{{timestamp:unit=YYYY}}"
+                    + "-{{partition}}-{{start_offset:padding=true}}.gz",
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket"
+            );
+        final Throwable t = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(properties)
+        );
+        assertEquals(
+            "Invalid value {{topic}}-{{timestamp:unit=YYYY}}-{{partition}}-{{start_offset:padding=true}}.gz "
+                + "for configuration file.name.template: unsupported set of template variables parameters, "
+                + "supported sets are: start_offset:padding=true|false,timestamp:unit=yyyy|MM|dd|HH",
+            t.getMessage());
+    }
 }

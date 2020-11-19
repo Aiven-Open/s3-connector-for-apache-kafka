@@ -37,7 +37,7 @@ public final class OldFullKeyFormatters {
 
             private final Map<String, DateTimeFormatter> formatterMap =
                 Map.of(
-                    "YYYY", DateTimeFormatter.ofPattern("YYYY"),
+                    "yyyy", DateTimeFormatter.ofPattern("yyyy"),
                     "MM", DateTimeFormatter.ofPattern("MM"),
                     "dd", DateTimeFormatter.ofPattern("dd"),
                     "HH", DateTimeFormatter.ofPattern("HH")

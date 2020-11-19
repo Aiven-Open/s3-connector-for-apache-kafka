@@ -193,7 +193,7 @@ final class IntegrationTest implements KafkaIntegrationBase {
         connectorConfig.put(
             "file.name.template",
             s3Prefix + "{{topic}}-{{partition}}-{{start_offset}}-"
-                + "{{timestamp:unit=YYYY}}-{{timestamp:unit=MM}}-{{timestamp:unit=dd}}"
+                + "{{timestamp:unit=yyyy}}-{{timestamp:unit=MM}}-{{timestamp:unit=dd}}"
         );
         connectRunner.createConnector(connectorConfig);
 
