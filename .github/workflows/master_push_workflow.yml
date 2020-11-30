@@ -1,13 +1,14 @@
-name: Push Workflow
+# The workflow to check master after push.
+name: Master checks after push
 on:
   push:
     branches: [ master ]
 jobs:
-  publish:
-    name: Push
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
