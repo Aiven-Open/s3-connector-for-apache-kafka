@@ -19,9 +19,11 @@ package io.aiven.kafka.connect.s3;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -52,6 +54,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class S3SinkConfig extends AivenCommonConfig {
+    private static final Logger log = LoggerFactory.getLogger(S3SinkConfig.class);
+
     @Deprecated
     public static final String AWS_ACCESS_KEY_ID = "aws_access_key_id";
     @Deprecated
@@ -109,13 +113,46 @@ public class S3SinkConfig extends AivenCommonConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
 
 
-    public S3SinkConfig(final Map<String, String> originals) {
-        super(configDef(), originals);
+    public S3SinkConfig(final Map<String, String> properties) {
+        super(configDef(), preprocessProperties(properties));
         validate();
     }
 
+    static Map<String, String> preprocessProperties(final Map<String, String> properties) {
+        // Add other preprocessings when needed here. Mind the order.
+        return handleDeprecatedYyyyUppercase(properties);
+    }
+
+    private static Map<String, String> handleDeprecatedYyyyUppercase(final Map<String, String> properties) {
+        if (!properties.containsKey(AWS_S3_PREFIX_CONFIG) && !properties.containsKey(AWS_S3_PREFIX)) {
+            return properties;
+        }
+
+        final var result = new HashMap<>(properties);
+        for (final var prop : List.of(AWS_S3_PREFIX_CONFIG, AWS_S3_PREFIX)) {
+            if (properties.containsKey(prop)) {
+                String template = properties.get(prop);
+                final String originalTemplate = template;
+
+                final var unitYyyyPattern = Pattern.compile("\\{\\{\\s*timestamp\\s*:\\s*unit\\s*=\\s*YYYY\\s*}}");
+                template = unitYyyyPattern.matcher(template)
+                    .replaceAll(matchResult -> matchResult.group().replace("YYYY", "yyyy"));
+
+                if (!template.equals(originalTemplate)) {
+                    log.warn("{{timestamp:unit=YYYY}} is no longer supported, "
+                            + "please use {{timestamp:unit=yyyy}} instead. "
+                            + "It was automatically replaced: {}",
+                        template);
+                }
+
+                result.put(prop, template);
+            }
+        }
+        return result;
+    }
+
     public static ConfigDef configDef() {
-        final var configDef = new ConfigDef();
+        final var configDef = new S3SinkConfigDef();
         addAwsConfigGroup(configDef);
         addFileConfigGroup(configDef);
         addOutputFieldsFormatConfigGroup(configDef, null);

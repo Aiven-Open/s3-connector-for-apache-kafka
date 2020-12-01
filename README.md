@@ -35,9 +35,9 @@ It supports placeholders with variable names:
 - `topic` - the Kafka topic;
 - `partition` - the Kafka partition;
 - `start_offset:padding=true|false` - the Kafka offset of the first record in the file, if `padding` sets to `true` will set leading zeroes for offset, default is `false`;
-- `timestamp:unit=YYYY|MM|dd|HH` - the timestamp of when the Kafka record has been processed by the connector.
+- `timestamp:unit=yyyy|MM|dd|HH` - the timestamp of when the Kafka record has been processed by the connector.
    - `unit` parameter values:
-     - `YYYY` - year, e.g. `2020`
+     - `yyyy` - year, e.g. `2020` (please note that `YYYY` is deprecated and is interpreted as `yyyy`)
      - `MM` - month, e.g. `03`
      - `dd` - day, e.g. `01`
      - `HH` - hour, e.g. `24` 
@@ -50,7 +50,7 @@ For example: `{{topic}}-{{partition}}-{{start_offset:padding=true}}.gz`
 will produce file names like `mytopic-1-00000000000000000001.gz`.
 
 To add formatted timestamps, use `timestamp` variable.<br/>
-For example: `{{topic}}-{{partition}}-{{start_offset}}-{{timestamp:unit=YYYY}}{{timestamp:unit=MM}}{{timestamp:unit=dd}}.gz` 
+For example: `{{topic}}-{{partition}}-{{start_offset}}-{{timestamp:unit=yyyy}}{{timestamp:unit=MM}}{{timestamp:unit=dd}}.gz` 
 will produce file names like `mytopic-2-1-20200301.gz`.
 
 To configure the time zone for the `timestamp` variable,
