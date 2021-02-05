@@ -32,7 +32,6 @@ import io.aiven.kafka.connect.common.config.OutputField;
 import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
 import io.aiven.kafka.connect.common.config.OutputFieldType;
 import io.aiven.kafka.connect.s3.OldFullKeyFormatters;
-import io.aiven.kafka.connect.s3.S3SinkConfig;
 
 import com.amazonaws.regions.Regions;
 import com.google.common.collect.Maps;
@@ -41,23 +40,23 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_ENDPOINT;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_PREFIX;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_PREFIX_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_COMPRESSION;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_FIELDS;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.TIMESTAMP_SOURCE;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.TIMESTAMP_TIMEZONE;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_ACCESS_KEY_ID;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_BUCKET;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_ENDPOINT;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_PREFIX;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_PREFIX_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_REGION;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_REGION_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_COMPRESSION;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_FIELDS;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.TIMESTAMP_SOURCE;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.TIMESTAMP_TIMEZONE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -85,9 +84,10 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_VALUE_ENCODING_CONFIG, OutputFieldEncodingType.NONE.name);
 
         final var conf = new S3SinkConfig(props);
+        final var awsCredentials = conf.getAwsCredentials();
 
-        assertEquals("AWS_ACCESS_KEY_ID", conf.getAwsAccessKeyId().value());
-        assertEquals("AWS_SECRET_ACCESS_KEY", conf.getAwsSecretKey().value());
+        assertEquals("AWS_ACCESS_KEY_ID", awsCredentials.getAccessKeyId().value());
+        assertEquals("AWS_SECRET_ACCESS_KEY", awsCredentials.getSecretAccessKey().value());
         assertEquals("THE_BUCKET", conf.getAwsS3BucketName());
         assertEquals("AWS_S3_PREFIX", conf.getAwsS3Prefix());
         assertEquals("AWS_S3_ENDPOINT", conf.getAwsS3EndPoint());
@@ -128,9 +128,10 @@ class S3SinkConfigTest {
         );
 
         final var conf = new S3SinkConfig(props);
+        final var awsCredentials = conf.getAwsCredentials();
 
-        assertEquals("AWS_ACCESS_KEY_ID", conf.getAwsAccessKeyId().value());
-        assertEquals("AWS_SECRET_ACCESS_KEY", conf.getAwsSecretKey().value());
+        assertEquals("AWS_ACCESS_KEY_ID", awsCredentials.getAccessKeyId().value());
+        assertEquals("AWS_SECRET_ACCESS_KEY", awsCredentials.getSecretAccessKey().value());
         assertEquals("THE_BUCKET", conf.getAwsS3BucketName());
         assertEquals("AWS_S3_PREFIX", conf.getAwsS3Prefix());
         assertEquals("AWS_S3_ENDPOINT", conf.getAwsS3EndPoint());
@@ -181,9 +182,10 @@ class S3SinkConfigTest {
         props.put(OUTPUT_FIELDS, "key, value");
 
         final var conf = new S3SinkConfig(props);
+        final var awsCredentials = conf.getAwsCredentials();
 
-        assertEquals("AWS_ACCESS_KEY_ID", conf.getAwsAccessKeyId().value());
-        assertEquals("AWS_SECRET_ACCESS_KEY", conf.getAwsSecretKey().value());
+        assertEquals("AWS_ACCESS_KEY_ID", awsCredentials.getAccessKeyId().value());
+        assertEquals("AWS_SECRET_ACCESS_KEY", awsCredentials.getSecretAccessKey().value());
         assertEquals("THE_BUCKET", conf.getAwsS3BucketName());
         assertEquals("AWS_S3_PREFIX", conf.getAwsS3Prefix());
         assertEquals("AWS_S3_ENDPOINT", conf.getAwsS3EndPoint());
@@ -689,5 +691,132 @@ class S3SinkConfigTest {
                 + "for configuration file.name.template: unsupported set of template variables parameters, "
                 + "supported sets are: start_offset:padding=true|false,timestamp:unit=yyyy|MM|dd|HH",
             t.getMessage());
+    }
+
+    @Test
+    void stsRoleCorrectConfig() {
+        final var props = new HashMap<String, String>();
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
+        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
+
+        final var conf = new S3SinkConfig(props);
+
+        assertEquals("arn:aws:iam::12345678910:role/S3SinkTask", conf.getStsRole().getArn());
+        assertEquals("EXTERNAL_ID", conf.getStsRole().getExternalId());
+        assertEquals("SESSION_NAME", conf.getStsRole().getSessionName());
+        assertEquals(Regions.US_EAST_1, conf.getAwsS3Region());
+    }
+
+    @Test
+    void stsRoleEmptyArn() {
+        final var props = new HashMap<String, String>();
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
+
+        final Throwable t = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(props)
+        );
+        assertEquals(
+                "Either {aws.access.key.id, aws.secret.access.key} or"
+                        + " {aws.sts.role.arn, aws.sts.role.session.name} should be set",
+                t.getMessage()
+        );
+    }
+
+    @Test
+    void stsRoleEmptySessionName() {
+        final var props = new HashMap<String, String>();
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
+        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
+
+        final Throwable t = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(props)
+        );
+        assertEquals(
+                "Either {aws.access.key.id, aws.secret.access.key} or"
+                        + " {aws.sts.role.arn, aws.sts.role.session.name} should be set",
+                t.getMessage()
+        );
+    }
+
+    @Test
+    void stsWrongSessionDuration() {
+        final var props = new HashMap<String, String>();
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "30");
+
+        final Throwable t = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(props)
+        );
+        assertEquals(
+                "Invalid value 30 for configuration aws.sts.role.session.duration: Value must be at least 900",
+                t.getMessage()
+        );
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "50000");
+
+        final Throwable t2 = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(props)
+        );
+        assertEquals(
+            "Invalid value 50000 for configuration aws.sts.role.session.duration: Value must be no more than 43200",
+            t2.getMessage()
+        );
+    }
+
+    @Test
+    void stsCorrectSessionDuration() {
+        final var props = new HashMap<String, String>();
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "900");
+
+        final var conf = new S3SinkConfig(props);
+
+        assertEquals(900, conf.getStsRole().getSessionDurationSeconds());
+    }
+
+    @Test
+    void stsEndpointShouldNotBeSetWithoutRegion() {
+        final var props = new HashMap<String, String>();
+
+        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
+        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
+        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_STS_CONFIG_ENDPOINT, "https://sts.eu-north-1.amazonaws.com");
+
+        final Throwable t3 = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(props)
+        );
+        assertEquals(
+            "aws.s3.region should be specified together with aws.sts.config.endpoint",
+            t3.getMessage()
+        );
+
     }
 }

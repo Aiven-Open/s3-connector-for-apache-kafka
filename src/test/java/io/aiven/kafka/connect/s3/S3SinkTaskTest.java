@@ -52,8 +52,11 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
+import io.aiven.kafka.connect.s3.config.AwsCredentialProviderFactory;
+import io.aiven.kafka.connect.s3.config.S3SinkConfig;
 import io.aiven.kafka.connect.s3.testutils.BucketAccessor;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
@@ -71,21 +74,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 import org.xerial.snappy.SnappyInputStream;
 
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_ACCESS_KEY_ID;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_BUCKET;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_ENDPOINT;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_PREFIX;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_S3_REGION;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_COMPRESSION;
-import static io.aiven.kafka.connect.s3.S3SinkConfig.OUTPUT_FIELDS;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_ACCESS_KEY_ID;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_BUCKET;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_ENDPOINT;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_PREFIX;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_REGION;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_COMPRESSION;
+import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_FIELDS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 
 public class S3SinkTaskTest {
 
@@ -536,6 +541,20 @@ public class S3SinkTaskTest {
         assertIterableEquals(
             Arrays.asList("[", "{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}", "]"),
             testBucketAccessor.readLines("topic1-0-30", compression));
+    }
+
+    @Test
+    final void requestCredentialProviderFromFactoryOnStart() {
+        final S3SinkTask task = new S3SinkTask();
+        final AwsCredentialProviderFactory mockedFactory = Mockito.mock(AwsCredentialProviderFactory.class);
+        final AWSCredentialsProvider provider = Mockito.mock(AWSCredentialsProvider.class);
+
+        task.credentialFactory = mockedFactory;
+        Mockito.when(mockedFactory.getProvider(any(S3SinkConfig.class))).thenReturn(provider);
+
+        task.start(properties);
+
+        Mockito.verify(mockedFactory, Mockito.times(1)).getProvider(any(S3SinkConfig.class));
     }
 
     private SinkRecord createRecordWithStringValueSchema(final String topic,

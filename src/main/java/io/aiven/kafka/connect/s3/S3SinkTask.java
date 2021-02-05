@@ -42,9 +42,9 @@ import io.aiven.kafka.connect.common.output.jsonwriter.JsonLinesOutputWriter;
 import io.aiven.kafka.connect.common.output.jsonwriter.JsonOutputWriter;
 import io.aiven.kafka.connect.common.output.plainwriter.PlainOutputWriter;
 import io.aiven.kafka.connect.common.templating.VariableTemplatePart;
+import io.aiven.kafka.connect.s3.config.AwsCredentialProviderFactory;
+import io.aiven.kafka.connect.s3.config.S3SinkConfig;
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.github.luben.zstd.ZstdOutputStream;
@@ -64,6 +64,8 @@ public class S3SinkTask extends SinkTask {
 
     private AmazonS3 s3Client;
 
+    protected AwsCredentialProviderFactory credentialFactory = new AwsCredentialProviderFactory();
+
     // required by Connect
     public S3SinkTask() {
 
@@ -79,12 +81,7 @@ public class S3SinkTask extends SinkTask {
             AmazonS3ClientBuilder
                 .standard()
                 .withCredentials(
-                    new AWSStaticCredentialsProvider(
-                        new BasicAWSCredentials(
-                            config.getAwsAccessKeyId().value(),
-                            config.getAwsSecretKey().value()
-                        )
-                    )
+                    credentialFactory.getProvider(config)
                 );
         if (Objects.isNull(awsEndpointConfig)) {
             s3ClientBuilder.withRegion(config.getAwsS3Region());

@@ -18,6 +18,25 @@ The connector needs the following permissions to the specified bucket:
 
 In case of ``Access Denied`` error see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
 
+### Credentials
+
+To make the connector work, a user has to specify AWS credentials that allow writing to S3.
+There are two ways to specify AWS credentials in this connector:
+
+1) Long term credentials.
+
+   It requires both `aws.access.key.id` and `aws.secret.access.key` to be specified.
+2) Short term credentials.
+
+   The connector will request a temporary token from the AWS STS service and assume a role from another AWS account.
+   It requires `aws.sts.role.arn`, `aws.sts.role.session.name` to be specified.
+
+It is important not to use both.
+Using option 2, it is recommended to specify the S3 bucket region in `aws.s3.region` and the
+corresponding AWS STS endpoint in `aws.sts.config.endpoint`. It's better to specify both or none.
+It is also important to specify `aws.sts.role.external.id` for the security reason.
+(see some details [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html)).
+
 ### File name format
 
 The connector uses the following format for output files (blobs):
@@ -314,12 +333,17 @@ List of deprecated configuration parameters:
 - `output_fields` - A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.
 
 List of new configuration parameters:
-- `aws.access.key.id` - AWS Access Key ID for accessing S3 bucket. Mandatory.
-- `aws.secret.access.key` - AWS S3 Secret Access Key. Mandatory.
+- `aws.access.key.id` - AWS Access Key ID for accessing S3 bucket.
+- `aws.secret.access.key` - AWS S3 Secret Access Key.
 - `aws.s3.bucket.name` - - Name of an existing bucket for storing the records. Mandatory.
 - `aws.s3.endpoint` - The endpoint configuration (service endpoint & signing region) to be used for requests.
 - `aws.s3.prefix` - [Deprecated] Use `file.name.prefix` and `file.name.template` instead. The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
 - `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`.
+- `aws.sts.role.arn` - AWS role ARN, for cross-account access role instead of `aws.access.key.id` and `aws.secret.access.key`
+- `aws.sts.role.external.id` - AWS ExternalId for cross-account access role
+- `aws.sts.role.session.name` - AWS session name for cross-account access role
+- `aws.sts.role.session.duration` - Session duration for cross-account access role in Seconds. Minimum value - 900. 
+- `aws.sts.config.endpoint` - AWS STS endpoint for cross-account access role.
 - `file.name.template` - The file name. The connector has the configurable template for file names. Constant string prefix could be added to the file name to put output files into a subdirectory.
 - `file.compression.type` - Compression type for output files. Supported algorithms are `gzip`, `snappy`, `zstd` and `none`. Defaults to `gzip`.
 - `format.output.fields` - A comma separated list of fields to include in output. Supported values are: `key`, `offset`, `timestamp` and `value`. Defaults to `value`.

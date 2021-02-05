@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.aiven.kafka.connect.s3;
+package io.aiven.kafka.connect.s3.config;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -30,7 +30,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.config.types.Password;
 
 import io.aiven.kafka.connect.common.config.AivenCommonConfig;
 import io.aiven.kafka.connect.common.config.CompressionType;
@@ -106,12 +105,17 @@ public class S3SinkConfig extends AivenCommonConfig {
     //      as soon we will migrate to new values it must be set to HIGH
     //      same for default value
 
+    public static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
+    public static final String AWS_STS_ROLE_ARN = "aws.sts.role.arn";
+    public static final String AWS_STS_ROLE_EXTERNAL_ID = "aws.sts.role.external.id";
+    public static final String AWS_STS_ROLE_SESSION_NAME = "aws.sts.role.session.name";
+    public static final String AWS_STS_ROLE_SESSION_DURATION = "aws.sts.role.session.duration";
+    public static final String AWS_STS_CONFIG_ENDPOINT = "aws.sts.config.endpoint";
+
     private static final String GROUP_AWS = "AWS";
     private static final String GROUP_FILE = "File";
     private static final String GROUP_FORMAT = "Format";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
-
+    private static final String GROUP_AWS_STS = "AWS STS";
 
     public S3SinkConfig(final Map<String, String> properties) {
         super(configDef(), preprocessProperties(properties));
@@ -154,6 +158,7 @@ public class S3SinkConfig extends AivenCommonConfig {
     public static ConfigDef configDef() {
         final var configDef = new S3SinkConfigDef();
         addAwsConfigGroup(configDef);
+        addAwsStsConfigGroup(configDef);
         addFileConfigGroup(configDef);
         addOutputFieldsFormatConfigGroup(configDef, null);
         addDeprecatedTimestampConfig(configDef);
@@ -227,6 +232,75 @@ public class S3SinkConfig extends AivenCommonConfig {
             awsGroupCounter++,
             ConfigDef.Width.NONE,
             AWS_S3_REGION_CONFIG
+        );
+
+    }
+
+    private static void addAwsStsConfigGroup(final ConfigDef configDef) {
+        int awsStsGroupCounter = 0;
+        configDef.define(
+            AWS_STS_ROLE_ARN,
+            ConfigDef.Type.STRING,
+            null,
+            new ConfigDef.NonEmptyString(),
+            Importance.MEDIUM,
+            "AWS STS Role",
+            GROUP_AWS_STS,
+            awsStsGroupCounter++,
+            ConfigDef.Width.NONE,
+            AWS_STS_ROLE_ARN
+        );
+
+        configDef.define(
+            AWS_STS_ROLE_SESSION_NAME,
+            ConfigDef.Type.STRING,
+            null,
+            new ConfigDef.NonEmptyString(),
+            Importance.MEDIUM,
+            "AWS STS Session name",
+            GROUP_AWS_STS,
+            awsStsGroupCounter++,
+            ConfigDef.Width.NONE,
+            AWS_STS_ROLE_SESSION_NAME
+        );
+
+        configDef.define(
+            AWS_STS_ROLE_SESSION_DURATION,
+            ConfigDef.Type.INT,
+            3600,
+            ConfigDef.Range.between(AwsStsRole.MIN_SESSION_DURATION, AwsStsRole.MAX_SESSION_DURATION),
+            Importance.MEDIUM,
+            "AWS STS Session duration",
+            GROUP_AWS_STS,
+            awsStsGroupCounter++,
+            ConfigDef.Width.NONE,
+            AWS_STS_ROLE_SESSION_DURATION
+        );
+
+        configDef.define(
+            AWS_STS_ROLE_EXTERNAL_ID,
+            ConfigDef.Type.STRING,
+            null,
+            new ConfigDef.NonEmptyString(),
+            Importance.MEDIUM,
+            "AWS STS External Id",
+            GROUP_AWS_STS,
+            awsStsGroupCounter++,
+            ConfigDef.Width.NONE,
+            AWS_STS_ROLE_EXTERNAL_ID
+        );
+
+        configDef.define(
+            AWS_STS_CONFIG_ENDPOINT,
+            ConfigDef.Type.STRING,
+            AwsStsEndpointConfig.AWS_STS_GLOBAL_ENDPOINT,
+            new ConfigDef.NonEmptyString(),
+            Importance.MEDIUM,
+            "AWS STS Config Endpoint",
+            GROUP_AWS_STS,
+            awsStsGroupCounter++,
+            ConfigDef.Width.NONE,
+            AWS_STS_CONFIG_ENDPOINT
         );
     }
 
@@ -506,23 +580,38 @@ public class S3SinkConfig extends AivenCommonConfig {
     }
 
     private void validate() {
-        if (Objects.isNull(getPassword(AWS_ACCESS_KEY_ID_CONFIG))
-            && Objects.isNull(getPassword(AWS_ACCESS_KEY_ID))) {
-            throw new ConfigException(
-                String.format(
-                    "Neither %s nor %s properties have been set",
-                    AWS_ACCESS_KEY_ID_CONFIG,
-                    AWS_ACCESS_KEY_ID)
-            );
-        } else if (Objects.isNull(getPassword(AWS_SECRET_ACCESS_KEY_CONFIG))
-            && Objects.isNull(getPassword(AWS_SECRET_ACCESS_KEY))) {
-            throw new ConfigException(
-                String.format(
-                    "Neither %s nor %s properties have been set",
-                    AWS_SECRET_ACCESS_KEY_CONFIG,
-                    AWS_SECRET_ACCESS_KEY)
-            );
-        } else if (Objects.isNull(getString(AWS_S3_BUCKET_NAME_CONFIG))
+        final AwsStsRole awsStsRole = getStsRole();
+        if (!awsStsRole.isValid()) {
+            final AwsAccessSecret awsNewSecret = getNewAwsCredentials();
+            if (!awsNewSecret.isValid()) {
+                final AwsAccessSecret awsOldSecret = getOldAwsCredentials();
+                if (!awsOldSecret.isValid()) {
+                    throw new ConfigException(
+                            String.format(
+                                    "Either {%s, %s} or {%s, %s} should be set",
+                                    AWS_ACCESS_KEY_ID_CONFIG, AWS_SECRET_ACCESS_KEY_CONFIG,
+                                    AWS_STS_ROLE_ARN, AWS_STS_ROLE_SESSION_NAME)
+                    );
+                } else {
+                    LOGGER.error(
+                        String.format(
+                            "Config options %s and %s are deprecated",
+                            AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+                        ));
+                }
+            }
+        } else {
+            final AwsStsEndpointConfig stsEndpointConfig = getStsEndpointConfig();
+            if (!stsEndpointConfig.isValid()
+                && !stsEndpointConfig.getServiceEndpoint().equals(AwsStsEndpointConfig.AWS_STS_GLOBAL_ENDPOINT)) {
+                throw new ConfigException(
+                    String.format(
+                        "%s should be specified together with %s",
+                        AWS_S3_REGION_CONFIG, AWS_STS_CONFIG_ENDPOINT)
+                );
+            }
+        }
+        if (Objects.isNull(getString(AWS_S3_BUCKET_NAME_CONFIG))
             && Objects.isNull(getString(AWS_S3_BUCKET))) {
             throw new ConfigException(
                 String.format(
@@ -543,20 +632,20 @@ public class S3SinkConfig extends AivenCommonConfig {
         }
     }
 
-    public Password getAwsAccessKeyId() {
-        // we have priority of properties if old one not set or both old and new one set
-        // the new property value will be selected
-        return Objects.nonNull(getPassword(AWS_ACCESS_KEY_ID_CONFIG))
-            ? getPassword(AWS_ACCESS_KEY_ID_CONFIG)
-            : getPassword(AWS_ACCESS_KEY_ID);
+    public AwsAccessSecret getOldAwsCredentials() {
+        return new AwsAccessSecret(getPassword(AWS_ACCESS_KEY_ID),
+            getPassword(AWS_SECRET_ACCESS_KEY));
     }
 
-    public Password getAwsSecretKey() {
-        // we have priority of properties if old one not set or both old and new one set
-        // the new property value will be selected
-        return Objects.nonNull(getPassword(AWS_SECRET_ACCESS_KEY_CONFIG))
-            ? getPassword(AWS_SECRET_ACCESS_KEY_CONFIG)
-            : getPassword(AWS_SECRET_ACCESS_KEY);
+    public AwsAccessSecret getNewAwsCredentials() {
+        return new AwsAccessSecret(getPassword(AWS_ACCESS_KEY_ID_CONFIG),
+            getPassword(AWS_SECRET_ACCESS_KEY_CONFIG));
+    }
+
+    public AwsAccessSecret getAwsCredentials() {
+        return getNewAwsCredentials().isValid()
+            ? getNewAwsCredentials()
+            : getOldAwsCredentials();
     }
 
     public String getAwsS3EndPoint() {
@@ -661,6 +750,26 @@ public class S3SinkConfig extends AivenCommonConfig {
             getTimezone(),
             TimestampSource.Type.of(getString(TIMESTAMP_SOURCE))
         );
+    }
+
+    public AwsStsRole getStsRole() {
+        return new AwsStsRole(getString(AWS_STS_ROLE_ARN),
+                              getString(AWS_STS_ROLE_EXTERNAL_ID),
+                              getString(AWS_STS_ROLE_SESSION_NAME),
+                              getInt(AWS_STS_ROLE_SESSION_DURATION));
+    }
+
+    public boolean hasAwsStsRole() {
+        return getStsRole().isValid();
+    }
+
+    public boolean hasStsEndpointConfig() {
+        return getStsEndpointConfig().isValid();
+    }
+
+    public AwsStsEndpointConfig getStsEndpointConfig() {
+        return new AwsStsEndpointConfig(getString(AWS_STS_CONFIG_ENDPOINT),
+                                        getString(AWS_S3_REGION_CONFIG));
     }
 
     protected static class AwsRegionValidator implements ConfigDef.Validator {
