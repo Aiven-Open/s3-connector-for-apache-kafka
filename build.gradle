@@ -78,10 +78,11 @@ ext {
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
     amazonS3Version = "1.11.718"
+    amazonSTSVersion = "1.11.718"
     slf4jVersion = "1.7.25"
     aivenConnectCommonsVersion = "0.4.0"
     junitVersion = "5.6.2"
-    testcontainersVersion = "1.12.0"
+    testcontainersVersion = "1.15.1"
     localstackVersion = "0.2.5"
 }
 
@@ -117,6 +118,7 @@ dependencies {
 
     implementation "org.slf4j:slf4j-api:$slf4jVersion"
     implementation "com.amazonaws:aws-java-sdk-s3:$amazonS3Version"
+    implementation "com.amazonaws:aws-java-sdk-sts:$amazonSTSVersion"
     implementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
     implementation "org.xerial.snappy:snappy-java:1.1.7.5"
     implementation "com.github.luben:zstd-jni:1.4.5-4"
@@ -133,6 +135,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
     testImplementation 'io.findify:s3mock_2.11:0.2.3'
     testImplementation "org.hamcrest:hamcrest:2.1"
+    testImplementation 'org.mockito:mockito-core:3.7.7'
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.3'
