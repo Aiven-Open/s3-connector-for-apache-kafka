@@ -432,6 +432,22 @@ timestamp.source=wallclock
 
 ## Development
 
+### Developing together with Commons library
+
+This project depends on [Aiven Kafka Connect Commons](https://github.com/aiven/aiven-kafka-connect-commons) library. Normally, an artifact of it published to a globally accessible repository is used. However, if you need to introduce changes to both this connector and Commons library at the same time, you should short-circuit the development loop via locally published artifacts. Please follow this steps:
+1. Checkout the master `HEAD` of Commons.
+2. Ensure the version [here](https://github.com/aiven/aiven-kafka-connect-commons/blob/master/gradle.properties) is with `-SNAPSHOT` prefix.
+3. Make changes to Commons.
+4. Publish it locally with `./gradlew publishToMavenLocal`.
+5. Change the version in the connector's [`build.gradle`](build.gradle) (`ext.aivenConnectCommonsVersion`) to match the published snapshot version of Commons.
+
+After that, the latest changes you've done to Commons will be used.
+
+When you finish developing the feature and is sure Commons won't need to change:
+1. Make a proper release of Commons.
+2. Publish the artifact to the currently used globally accesible repository.
+3. Change the version of Commons in the connector to the published one.
+
 ### Integration testing
 
 Integration tests are implemented using JUnit, Gradle and Docker.
