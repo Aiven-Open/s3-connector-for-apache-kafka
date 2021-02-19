@@ -32,8 +32,6 @@ plugins {
 
     // https://docs.gradle.org/current/userguide/publishing_maven.html
     id "maven-publish"
-
-    id "com.jfrog.bintray" version "1.8.1"
 }
 
 group = "io.aiven"
@@ -62,10 +60,7 @@ jacoco {
 
 repositories {
     mavenLocal()
-    jcenter()
-    maven {
-        url "http://dl.bintray.com/aiven/maven"
-    }
+    mavenCentral()
     // For kafka-avro-serializer and kafka-connect-avro-converter
     maven {
         url "https://packages.confluent.io/maven"
@@ -240,29 +235,6 @@ publishing {
                 }
             }
             from components.java
-        }
-    }
-}
-
-bintray {
-    user = System.getenv('BINTRAY_USER')
-    key = System.getenv('BINTRAY_KEY')
-    publications = ['maven']
-    publish = true
-    override = false
-    pkg {
-        repo = 'maven'
-        name = 'aiven-kafka-connect-s3'
-        userOrg = 'aiven'
-        licenses = ['Apache-2.0']
-        websiteUrl = 'https://github.com/aiven/aiven-kafka-connect-s3'
-        vcsUrl = 'https://github.com/aiven/aiven-kafka-connect-s3.git'
-        labels = ['kafka', 'connect', 's3']
-        publicDownloadNumbers = true
-        version {
-            name = project.getVersion()
-            desc = 'Aiven Kafka S3 connector ' + project.getVersion()
-            released  = new Date()
         }
     }
 }
