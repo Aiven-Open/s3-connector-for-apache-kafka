@@ -47,6 +47,7 @@ import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
 import io.aiven.kafka.connect.common.config.validators.UrlValidator;
 import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.templating.Template;
+import io.aiven.kafka.connect.s3.S3OutputStream;
 
 import com.amazonaws.regions.Regions;
 import org.slf4j.Logger;
@@ -99,6 +100,7 @@ public class S3SinkConfig extends AivenCommonConfig {
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
     public static final String AWS_S3_ENDPOINT_CONFIG = "aws.s3.endpoint";
     public static final String AWS_S3_REGION_CONFIG = "aws.s3.region";
+    public static final String AWS_S3_PART_SIZE = "aws.s3.part.size.bytes";
 
     // FIXME since we support so far both old style and new style of property names
     //      Importance was set to medium,
@@ -232,6 +234,46 @@ public class S3SinkConfig extends AivenCommonConfig {
             awsGroupCounter++,
             ConfigDef.Width.NONE,
             AWS_S3_REGION_CONFIG
+        );
+
+        configDef.define(
+                AWS_S3_PART_SIZE,
+                Type.INT,
+                S3OutputStream.DEFAULT_PART_SIZE,
+                new ConfigDef.Validator() {
+
+                    static final int MAX_BUFFER_SIZE = 2_000_000_000;
+
+                    @Override
+                    public void ensureValid(final String name, final Object value) {
+                        if (value == null) {
+                            throw new ConfigException(name, null, "Part size must be non-null");
+                        }
+                        final var number = (Number) value;
+                        if (number.longValue() <= 0) {
+                            throw new ConfigException(
+                                    name,
+                                    value,
+                                    "Part size must be greater than 0"
+                            );
+                        }
+                        if (number.longValue() > MAX_BUFFER_SIZE) {
+                            throw new ConfigException(
+                                    name,
+                                    value,
+                                    "Part size must be no more: " + MAX_BUFFER_SIZE + " bytes (2GB)"
+                            );
+                        }
+                    }
+                },
+                Importance.MEDIUM,
+                "The Part Size in S3 Multi-part Uploads in bytes. Maximum is "
+                        + Integer.MAX_VALUE + " (~2GB) and default is "
+                        + S3OutputStream.DEFAULT_PART_SIZE + " (5 MB)",
+                GROUP_AWS,
+                awsGroupCounter++,
+                ConfigDef.Width.NONE,
+                AWS_S3_PART_SIZE
         );
 
     }
@@ -676,6 +718,10 @@ public class S3SinkConfig extends AivenCommonConfig {
         return Objects.nonNull(getString(AWS_S3_PREFIX_CONFIG))
             ? getString(AWS_S3_PREFIX_CONFIG)
             : getString(AWS_S3_PREFIX);
+    }
+
+    public int getAwsS3PartSize() {
+        return getInt(AWS_S3_PART_SIZE);
     }
 
     public CompressionType getCompressionType() {
