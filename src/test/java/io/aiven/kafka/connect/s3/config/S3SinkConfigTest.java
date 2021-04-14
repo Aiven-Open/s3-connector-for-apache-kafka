@@ -32,6 +32,7 @@ import io.aiven.kafka.connect.common.config.OutputField;
 import io.aiven.kafka.connect.common.config.OutputFieldEncodingType;
 import io.aiven.kafka.connect.common.config.OutputFieldType;
 import io.aiven.kafka.connect.s3.OldFullKeyFormatters;
+import io.aiven.kafka.connect.s3.S3OutputStream;
 
 import com.amazonaws.regions.Regions;
 import com.google.common.collect.Maps;
@@ -105,6 +106,7 @@ class S3SinkConfigTest {
             conf.getOutputFields()
         );
         assertEquals(FormatType.forName("csv"), conf.getFormatType());
+        assertEquals(S3OutputStream.DEFAULT_PART_SIZE, conf.getAwsS3PartSize());
     }
 
     @Test
@@ -252,6 +254,38 @@ class S3SinkConfigTest {
         assertEquals(
             "Invalid value [hidden] for configuration aws.secret.access.key: Password must be non-empty",
             t.getMessage()
+        );
+    }
+
+    @Test
+    void wrongPartSize() {
+        final var wrongMaxPartSizeProps =
+                Map.of(
+                        S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-key-id",
+                        S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "bla-bla-access-key",
+                        S3SinkConfig.AWS_S3_PART_SIZE, Long.toString(2_000_000_001L)
+                );
+        final var wrongMaxPartSizePropsT = assertThrows(
+                ConfigException.class, () -> new S3SinkConfig(wrongMaxPartSizeProps)
+        );
+        assertEquals(
+                "Invalid value 2000000001 for configuration aws.s3.part.size.bytes: "
+                        + "Part size must be no more: 2000000000 bytes (2GB)",
+                wrongMaxPartSizePropsT.getMessage()
+        );
+
+        final var wrongMinPartSizeProps =
+                Map.of(
+                        S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-key-id",
+                        S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "bla-bla-access-key",
+                        S3SinkConfig.AWS_S3_PART_SIZE, "0"
+                );
+        final var wrongMinPartSizePropsT = assertThrows(
+                ConfigException.class, () -> new S3SinkConfig(wrongMinPartSizeProps)
+        );
+        assertEquals(
+                "Invalid value 0 for configuration aws.s3.part.size.bytes: Part size must be greater than 0",
+                wrongMinPartSizePropsT.getMessage()
         );
     }
 

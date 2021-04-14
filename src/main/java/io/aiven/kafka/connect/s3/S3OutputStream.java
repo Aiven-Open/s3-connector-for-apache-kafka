@@ -17,97 +17,152 @@
 package io.aiven.kafka.connect.s3;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
+import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
+import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.amazonaws.services.s3.model.PartETag;
+import com.amazonaws.services.s3.model.UploadPartRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class S3OutputStream extends OutputStream {
 
-    private final AmazonS3 s3Client;
+    private final Logger logger = LoggerFactory.getLogger(S3OutputStream.class);
+
+    public static final int DEFAULT_PART_SIZE = 5 * 1024 * 1024;
+
+    private final AmazonS3 client;
+
+    private final ByteBuffer byteBuffer;
+
     private final String bucketName;
-    private final String keyName;
-    private byte[] buffer;
-    private int bufferLen;
-    private int bufferSize;
-    private S3MultipartUpload multipartUpload;
 
-    public S3OutputStream(final AmazonS3 s3Client, final String bucketName, final String keyName) {
-        this.s3Client = s3Client;
+    private final String key;
+
+    private MultipartUpload multipartUpload;
+
+    private final int partSize;
+
+    private boolean closed = false;
+
+    public S3OutputStream(final String bucketName,
+                          final String key,
+                          final int partSize,
+                          final AmazonS3 client) {
         this.bucketName = bucketName;
-        this.keyName = keyName;
-        this.bufferSize = 32 * 1024;
-        this.buffer = new byte[this.bufferSize];
-        this.bufferLen = 0;
-        this.multipartUpload = null;
+        this.key = key;
+        this.client = client;
+        this.partSize = partSize;
+        this.byteBuffer = ByteBuffer.allocate(partSize);
     }
 
-    private void expandBuffer(final int dataLength) {
-        if (this.bufferSize - this.bufferLen < dataLength) {
-            int newBufferSize = this.bufferSize;
-            while (newBufferSize - this.bufferLen < dataLength) {
-                newBufferSize = newBufferSize * 2;
+    @Override
+    public void write(final int b) throws IOException {
+        write(new byte[]{(byte) b}, 0, 1);
+    }
+
+    @Override
+    public void write(final byte[] b, final int off, final int len) throws IOException {
+        if (Objects.isNull(b) || b.length == 0) {
+            return;
+        }
+        if (Objects.isNull(multipartUpload)) {
+            multipartUpload = newMultipartUpload();
+        }
+        final var source = ByteBuffer.wrap(b, off, len);
+        while (source.hasRemaining()) {
+            final var transferred = Math.min(byteBuffer.remaining(), source.remaining());
+            final var offset = source.arrayOffset() + source.position();
+            byteBuffer.put(source.array(), offset, transferred);
+            source.position(source.position() + transferred);
+            if (!byteBuffer.hasRemaining()) {
+                flushBuffer(0, partSize, partSize);
             }
-            final byte[] newBuffer = new byte[newBufferSize];
-            System.arraycopy(this.buffer, 0, newBuffer, 0, this.bufferLen);
-            this.buffer = newBuffer;
-            this.bufferSize = newBufferSize;
         }
     }
 
-    @Override
-    public void write(final byte[] data, final int offset, final int len) {
-        this.expandBuffer(len);
-        System.arraycopy(data, offset, this.buffer, this.bufferLen, len);
-        this.bufferLen += len;
+    private MultipartUpload newMultipartUpload() throws IOException {
+        logger.debug("Create new multipart upload request");
+        final var initialRequest = new InitiateMultipartUploadRequest(bucketName, key);
+        final var initiateResult = client.initiateMultipartUpload(initialRequest);
+        logger.debug("Upload ID: {}", initiateResult.getUploadId());
+        return new MultipartUpload(initiateResult.getUploadId());
     }
 
     @Override
-    public void write(final byte[] data) {
-        this.write(data, 0, data.length);
+    public void close() throws IOException {
+        if (closed) {
+            return;
+        }
+        if (byteBuffer.position() > 0 && Objects.nonNull(multipartUpload)) {
+            flushBuffer(byteBuffer.arrayOffset(), byteBuffer.position(), byteBuffer.position());
+        }
+        if (Objects.nonNull(multipartUpload)) {
+            multipartUpload.complete();
+            multipartUpload = null;
+        }
+        closed = true;
+        super.close();
     }
 
-    @Override
-    public void write(final int dataByte) {
-        this.expandBuffer(1);
-        this.buffer[this.bufferLen] = (byte) dataByte;
-        this.bufferLen += 1;
-    }
-
-    @Override
-    public void flush() {
-        // flush buffered data to S3, if we have at least the minimum required 5MB for multipart request
-        if (this.bufferLen > 5 * 1024 * 1024) {
-            if (this.multipartUpload == null) {
-                this.multipartUpload =
-                    new S3MultipartUpload(this.s3Client, this.bucketName, this.keyName);
-            }
-            //FIXME use try-resources here
-            final InputStream stream = new ByteArrayInputStream(this.buffer, 0, this.bufferLen);
-            this.multipartUpload.uploadPart(stream, this.bufferLen);
-            this.bufferLen = 0;
+    private void flushBuffer(final int offset, final int length, final int partSize) throws IOException {
+        try {
+            multipartUpload.uploadPart(
+                    new ByteArrayInputStream(
+                            byteBuffer.array(),
+                            offset,
+                            length),
+                    partSize
+            );
+            byteBuffer.clear();
+        } catch (final Exception e) {
+            multipartUpload.abort();
+            multipartUpload = null;
+            throw new IOException(e);
         }
     }
 
-    @Override
-    public void close() {
-        if (this.bufferLen > 0) {
-            final InputStream stream = new ByteArrayInputStream(this.buffer, 0, this.bufferLen);
+    private class MultipartUpload {
 
-            if (this.multipartUpload != null) {
-                this.multipartUpload.uploadPart(stream, this.bufferLen);
-            } else {
-                final ObjectMetadata metadata = new ObjectMetadata();
-                metadata.setContentLength(this.bufferLen);
-                this.s3Client.putObject(this.bucketName, this.keyName, stream, metadata);
-            }
-            this.bufferLen = 0;
+        private final String uploadId;
+
+        private final List<PartETag> partETags = new ArrayList<>();
+
+        public MultipartUpload(final String uploadId) {
+            this.uploadId = uploadId;
         }
 
-        if (this.multipartUpload != null) {
-            this.multipartUpload.commit();
-            this.multipartUpload = null;
+        public void uploadPart(final InputStream in, final int partSize) throws IOException {
+            final var partNumber = partETags.size() + 1;
+            final var uploadPartRequest =
+                    new UploadPartRequest()
+                            .withBucketName(bucketName)
+                            .withKey(key)
+                            .withUploadId(uploadId)
+                            .withPartSize(partSize)
+                            .withPartNumber(partNumber)
+                            .withInputStream(in);
+            final var uploadResult = client.uploadPart(uploadPartRequest);
+            partETags.add(uploadResult.getPartETag());
         }
+
+        public void complete() {
+            client.completeMultipartUpload(new CompleteMultipartUploadRequest(bucketName, key, uploadId, partETags));
+        }
+
+        public void abort() {
+            client.abortMultipartUpload(new AbortMultipartUploadRequest(bucketName, key, uploadId));
+        }
+
     }
+
 }
