@@ -76,7 +76,7 @@ ext {
     amazonS3Version = "1.11.718"
     amazonSTSVersion = "1.11.718"
     slf4jVersion = "1.7.30"
-    aivenConnectCommonsVersion = "0.5.0"
+    aivenConnectCommonsVersion = "0.6.0"
     junitVersion = "5.7.1"
     testcontainersVersion = "1.15.3"
     localstackVersion = "0.2.10"
@@ -118,11 +118,6 @@ dependencies {
     implementation "com.amazonaws:aws-java-sdk-sts:$amazonSTSVersion"
     implementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
 
-    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
-    compileOnly "org.apache.kafka:connect-runtime:$kafkaVersion"
-    compileOnly "org.slf4j:slf4j-api:$slf4jVersion"
-
-    testImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
     testImplementation "org.xerial.snappy:snappy-java:1.1.7.5"
     testImplementation "com.github.luben:zstd-jni:1.4.5-4"
 
@@ -143,13 +138,6 @@ dependencies {
 
     testRuntimeOnly "ch.qos.logback:logback-classic:1.2.3"
 
-    integrationTestImplementation "org.xerial.snappy:snappy-java:1.1.7.5"
-    integrationTestImplementation "com.github.luben:zstd-jni:1.4.5-4"
-
-    integrationTestImplementation "org.apache.kafka:connect-api:$kafkaVersion"
-    integrationTestImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
-    integrationTestImplementation "org.apache.kafka:connect-json:$kafkaVersion"
-    integrationTestImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
     integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
@@ -158,8 +146,6 @@ dependencies {
     integrationTestImplementation "io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion"
 
     integrationTestImplementation "org.apache.avro:avro:1.8.1"
-
-    integrationTestImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
 
     testImplementation ("org.apache.parquet:parquet-tools:1.11.1") {
         exclude group: "org.slf4j", module: "slf4j-api"
@@ -205,7 +191,7 @@ dependencies {
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
 
-    integrationTestImplementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
+    testImplementation 'org.assertj:assertj-core:3.19.0'
 }
 
 checkstyle {

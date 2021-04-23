@@ -116,6 +116,7 @@ public class S3SinkTask extends SinkTask {
                              .withCompressionType(config.getCompressionType())
                              .withExternalProperties(config.originalsStrings())
                              .withOutputFields(config.getOutputFields())
+                             .withEnvelopeEnabled(config.envelopeEnabled())
                              .build(out, config.getFormatType())) {
             outputWriter.writeRecords(records);
         } catch (final IOException e) {
