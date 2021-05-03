@@ -82,7 +82,7 @@
         <!-- See http://checkstyle.sourceforge.net/config_imports.html#ImportOrder -->
         <module name="ImportOrder">
             <property name="option" value="bottom"/>
-            <property name="groups" value="javax.,java.,org.apache.kafka.,io.aiven."/>
+            <property name="groups" value="javax,java,org.apache.kafka,io.aiven,*"/>
             <property name="ordered" value="true"/>
             <property name="separated" value="true"/>
             <property name="separatedStaticGroups" value="true"/>
