@@ -85,6 +85,7 @@ import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_S3_REGION;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_SECRET_ACCESS_KEY;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_COMPRESSION;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_FIELDS;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
@@ -504,6 +505,55 @@ public class S3SinkTaskTest {
     }
 
     @Test
+    final void supportUnwrappedJsonEnvelopeForStructAndJsonL() throws IOException {
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "value");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_ENVELOPE_CONFIG, "false");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
+
+        final S3SinkTask task = new S3SinkTask();
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
+            createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
+            createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
+        );
+
+        final TopicPartition tp00 = new TopicPartition("topic0", 0);
+        final TopicPartition tp01 = new TopicPartition("topic0", 1);
+        final TopicPartition tp10 = new TopicPartition("topic1", 0);
+        final Collection<TopicPartition> tps = List.of(tp00, tp01, tp10);
+        task.open(tps);
+
+        task.put(records);
+
+        final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(tp00, new OffsetAndMetadata(10));
+        offsets.put(tp01, new OffsetAndMetadata(20));
+        offsets.put(tp10, new OffsetAndMetadata(30));
+        task.flush(offsets);
+
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        final List<String> expectedBlobs = Lists.newArrayList(
+            "prefix-topic0-0-00000000000000000010" + compressionType.extension(),
+            "prefix-topic0-1-00000000000000000020" + compressionType.extension(),
+            "prefix-topic1-0-00000000000000000030" + compressionType.extension()
+        );
+        assertThat(expectedBlobs).allMatch(blobName -> testBucketAccessor.doesObjectExist(blobName));
+
+        assertThat(testBucketAccessor.readLines("prefix-topic0-0-00000000000000000010", compression))
+            .containsExactly("{\"name\":\"name0\"}");
+        assertThat(testBucketAccessor.readLines("prefix-topic0-1-00000000000000000020", compression))
+            .containsExactly("{\"name\":\"name1\"}");
+        assertThat(testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression))
+            .containsExactly("{\"name\":\"name2\"}");
+    }
+
+    @Test
     final void supportStructValuesForClassicJson() throws IOException {
         final S3SinkTask task = new S3SinkTask();
         final String compression = "none";
@@ -541,6 +591,55 @@ public class S3SinkTaskTest {
         assertIterableEquals(
             Arrays.asList("[", "{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}", "]"),
             testBucketAccessor.readLines("topic1-0-30", compression));
+    }
+
+    @Test
+    final void supportUnwrappedJsonEnvelopeForStructAndClassicJson() throws IOException {
+        final String compression = "none";
+        properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "value");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_ENVELOPE_CONFIG, "false");
+        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "json");
+        properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
+
+        final S3SinkTask task = new S3SinkTask();
+        task.start(properties);
+
+        final List<SinkRecord> records = Arrays.asList(
+            createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
+            createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
+            createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
+        );
+
+        final TopicPartition tp00 = new TopicPartition("topic0", 0);
+        final TopicPartition tp01 = new TopicPartition("topic0", 1);
+        final TopicPartition tp10 = new TopicPartition("topic1", 0);
+        final Collection<TopicPartition> tps = List.of(tp00, tp01, tp10);
+        task.open(tps);
+
+        task.put(records);
+
+        final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(tp00, new OffsetAndMetadata(10));
+        offsets.put(tp01, new OffsetAndMetadata(20));
+        offsets.put(tp10, new OffsetAndMetadata(30));
+        task.flush(offsets);
+
+        final CompressionType compressionType = CompressionType.forName(compression);
+
+        final List<String> expectedBlobs = Lists.newArrayList(
+            "prefix-topic0-0-00000000000000000010" + compressionType.extension(),
+            "prefix-topic0-1-00000000000000000020" + compressionType.extension(),
+            "prefix-topic1-0-00000000000000000030" + compressionType.extension()
+        );
+        assertThat(expectedBlobs).allMatch(blobName -> testBucketAccessor.doesObjectExist(blobName));
+
+        assertThat(testBucketAccessor.readLines("prefix-topic0-0-00000000000000000010", compression))
+            .containsExactly("[", "{\"name\":\"name0\"}", "]");
+        assertThat(testBucketAccessor.readLines("prefix-topic0-1-00000000000000000020", compression))
+            .containsExactly("[", "{\"name\":\"name1\"}", "]");
+        assertThat(testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression))
+            .containsExactly("[", "{\"name\":\"name2\"}", "]");
     }
 
     @Test
