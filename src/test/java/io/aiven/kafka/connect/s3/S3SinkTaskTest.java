@@ -50,6 +50,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.sink.SinkTaskContext;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.s3.config.AwsCredentialProviderFactory;
@@ -60,21 +61,27 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.retry.PredefinedBackoffStrategies;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.github.luben.zstd.ZstdInputStream;
 import com.google.common.collect.Lists;
 import io.findify.s3mock.S3Mock;
+import org.assertj.core.util.introspection.FieldSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.xerial.snappy.SnappyInputStream;
 
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.AWS_ACCESS_KEY_ID;
@@ -92,7 +99,10 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 public class S3SinkTaskTest {
 
     private static final String TEST_BUCKET = "test-bucket";
@@ -108,6 +118,9 @@ public class S3SinkTaskTest {
 
     private static BucketAccessor testBucketAccessor;
 
+    @Mock
+    private SinkTaskContext mockedSinkTaskContext;
+
     @BeforeAll
     public static void setUpClass() {
         final Random generator = new Random();
@@ -116,13 +129,13 @@ public class S3SinkTaskTest {
         s3Api = new S3Mock.Builder().withPort(s3Port).withInMemoryBackend().build();
         s3Api.start();
 
-        final Map<String, String> commonPropertiesMutable = new HashMap<>();
-        commonPropertiesMutable.put(AWS_ACCESS_KEY_ID, "test_key_id");
-        commonPropertiesMutable.put(AWS_SECRET_ACCESS_KEY, "test_secret_key");
-        commonPropertiesMutable.put(AWS_S3_BUCKET, TEST_BUCKET);
-        commonPropertiesMutable.put(AWS_S3_ENDPOINT, "http://localhost:" + s3Port);
-        commonPropertiesMutable.put(AWS_S3_REGION, "us-west-2");
-        commonProperties = Collections.unmodifiableMap(commonPropertiesMutable);
+        commonProperties = Map.of(
+                AWS_ACCESS_KEY_ID, "test_key_id",
+                AWS_SECRET_ACCESS_KEY, "test_secret_key",
+                AWS_S3_BUCKET, TEST_BUCKET,
+                AWS_S3_ENDPOINT, "http://localhost:" + s3Port,
+                AWS_S3_REGION, "us-west-2"
+        );
 
         final AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard();
         final BasicAWSCredentials awsCreds = new BasicAWSCredentials(
@@ -161,7 +174,7 @@ public class S3SinkTaskTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"none", "gzip", "snappy", "zstd"})
-    public void testAivenKafkaConnectS3SinkTaskTest(final String compression) throws IOException {
+    public void testAivenKafkaConnectS3SinkTask(final String compression) throws IOException {
         // Create SinkTask
         final S3SinkTask task = new S3SinkTask();
 
@@ -282,6 +295,119 @@ public class S3SinkTaskTest {
         );
     }
 
+    @Test
+    void setKafkaBackoffTimeout() {
+        final S3SinkTask task = new S3SinkTask();
+        task.initialize(mockedSinkTaskContext);
+        final var props = Map.of(
+                S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value",
+                S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl",
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID_CONFIG",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY_CONFIG",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "AWS_S3_BUCKET_NAME_CONFIG",
+                S3SinkConfig.KAFKA_RETRY_BACKOFF_MS_CONFIG, "3000"
+        );
+        task.start(props);
+
+        verify(mockedSinkTaskContext).timeout(3000L);
+    }
+
+    @Test
+    void skipKafkaBackoffTimeout() {
+        final S3SinkTask task = new S3SinkTask();
+        task.initialize(mockedSinkTaskContext);
+        final var props = Map.of(
+                S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value",
+                S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl",
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID_CONFIG",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY_CONFIG",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "AWS_S3_BUCKET_NAME_CONFIG"
+        );
+        task.start(props);
+
+
+        verify(mockedSinkTaskContext, never()).timeout(any(Long.class));
+    }
+
+    @Test
+    void setupDefaultS3Policy() {
+        final S3SinkTask task = new S3SinkTask();
+        task.initialize(mockedSinkTaskContext);
+        final var props = Map.of(
+                S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value",
+                S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl",
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID_CONFIG",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY_CONFIG",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "AWS_S3_BUCKET_NAME_CONFIG"
+        );
+        task.start(props);
+
+        final var s3Client =
+                FieldSupport.EXTRACTION.fieldValue("s3Client", AmazonS3.class, task);
+        final var s3RetryPolicy =
+                ((AmazonS3Client) s3Client).getClientConfiguration().getRetryPolicy();
+
+        final var fullJitterBackoffStrategy = (PredefinedBackoffStrategies.FullJitterBackoffStrategy)
+            s3RetryPolicy.getBackoffStrategy();
+
+        final var defaultDelay =
+                FieldSupport.EXTRACTION.fieldValue(
+                        "baseDelay",
+                        Integer.class,
+                        fullJitterBackoffStrategy);
+        final var defaultMaxDelay =
+                FieldSupport.EXTRACTION.fieldValue(
+                        "maxBackoffTime",
+                        Integer.class,
+                        fullJitterBackoffStrategy);
+
+        assertThat(s3RetryPolicy.getMaxErrorRetry())
+                .isEqualTo(S3SinkConfig.S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT);
+        assertThat(defaultDelay)
+                .isEqualTo(S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT);
+        assertThat(defaultMaxDelay)
+                .isEqualTo(S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT);
+    }
+
+    @Test
+    void setupCustomS3Policy() {
+        final S3SinkTask task = new S3SinkTask();
+        task.initialize(mockedSinkTaskContext);
+        final var props = Map.of(
+                S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value",
+                S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl",
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID_CONFIG",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY_CONFIG",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "AWS_S3_BUCKET_NAME_CONFIG",
+                "aws.s3.backoff.delay.ms", "1",
+                "aws.s3.backoff.max.delay.ms", "2",
+                "aws.s3.backoff.max.retries", "3");
+        task.start(props);
+
+        final var s3Client =
+                FieldSupport.EXTRACTION.fieldValue("s3Client", AmazonS3.class, task);
+        final var s3RetryPolicy =
+                ((AmazonS3Client) s3Client).getClientConfiguration().getRetryPolicy();
+
+        final var fullJitterBackoffStrategy = (PredefinedBackoffStrategies.FullJitterBackoffStrategy)
+                s3RetryPolicy.getBackoffStrategy();
+
+        final var defaultDelay =
+                FieldSupport.EXTRACTION.fieldValue(
+                        "baseDelay",
+                        Integer.class,
+                        fullJitterBackoffStrategy);
+        final var defaultMaxDelay =
+                FieldSupport.EXTRACTION.fieldValue(
+                        "maxBackoffTime",
+                        Integer.class,
+                        fullJitterBackoffStrategy);
+
+        assertThat(defaultDelay).isEqualTo(1);
+        assertThat(defaultMaxDelay).isEqualTo(2);
+        assertThat(s3RetryPolicy.getMaxErrorRetry()).isEqualTo(3);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"none", "gzip", "snappy", "zstd"})
     public void testS3UtcDatePrefix(final String compression) {
@@ -354,7 +480,7 @@ public class S3SinkTaskTest {
         properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "any_prefix");
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStringValueSchema("topic0", 0, "key0", "value0", 10, 1000),
             createRecordWithStringValueSchema("topic0", 1, "key1", "value1", 20, 1001),
             createRecordWithStringValueSchema("topic1", 0, "key2", "value2", 30, 1002)
@@ -382,7 +508,7 @@ public class S3SinkTaskTest {
         properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStringValueSchema("topic0", 0, "key0", "value0", 10, 1000),
             createRecordWithStringValueSchema("topic0", 1, "key1", "value1", 20, 1001),
             createRecordWithStringValueSchema("topic1", 0, "key2", "value2", 30, 1002)
@@ -415,26 +541,27 @@ public class S3SinkTaskTest {
         }
 
         assertIterableEquals(
-            Arrays.asList("{\"value\":\"value0\",\"key\":\"key0\"}"),
+            List.of("{\"value\":\"value0\",\"key\":\"key0\"}"),
             testBucketAccessor.readLines("prefix-topic0-0-00000000000000000010", compression));
         assertIterableEquals(
-            Arrays.asList("{\"value\":\"value1\",\"key\":\"key1\"}"),
+            List.of("{\"value\":\"value1\",\"key\":\"key1\"}"),
             testBucketAccessor.readLines("prefix-topic0-1-00000000000000000020", compression));
         assertIterableEquals(
-            Arrays.asList("{\"value\":\"value2\",\"key\":\"key2\"}"),
+            List.of("{\"value\":\"value2\",\"key\":\"key2\"}"),
             testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression));
     }
 
     @Test
     final void failedForStructValuesByDefault() {
         final S3SinkTask task = new S3SinkTask();
+
         final String compression = "none";
         properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
         properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
         properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
             createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
             createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
@@ -453,6 +580,7 @@ public class S3SinkTaskTest {
     @Test
     final void supportStructValuesForJsonL() throws IOException {
         final S3SinkTask task = new S3SinkTask();
+
         final String compression = "none";
         properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
         properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
@@ -460,7 +588,7 @@ public class S3SinkTaskTest {
         properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "prefix-");
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
             createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
             createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
@@ -494,13 +622,13 @@ public class S3SinkTaskTest {
         }
 
         assertIterableEquals(
-            Arrays.asList("{\"value\":{\"name\":\"name0\"},\"key\":\"key0\"}"),
+            List.of("{\"value\":{\"name\":\"name0\"},\"key\":\"key0\"}"),
             testBucketAccessor.readLines("prefix-topic0-0-00000000000000000010", compression));
         assertIterableEquals(
-            Arrays.asList("{\"value\":{\"name\":\"name1\"},\"key\":\"key1\"}"),
+            List.of("{\"value\":{\"name\":\"name1\"},\"key\":\"key1\"}"),
             testBucketAccessor.readLines("prefix-topic0-1-00000000000000000020", compression));
         assertIterableEquals(
-            Arrays.asList("{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}"),
+            List.of("{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}"),
             testBucketAccessor.readLines("prefix-topic1-0-00000000000000000030", compression));
     }
 
@@ -516,7 +644,7 @@ public class S3SinkTaskTest {
         final S3SinkTask task = new S3SinkTask();
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
             createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
             createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
@@ -556,13 +684,14 @@ public class S3SinkTaskTest {
     @Test
     final void supportStructValuesForClassicJson() throws IOException {
         final S3SinkTask task = new S3SinkTask();
+
         final String compression = "none";
         properties.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, compression);
         properties.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value");
         properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "json");
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
             createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
             createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
@@ -583,13 +712,13 @@ public class S3SinkTaskTest {
         }
 
         assertIterableEquals(
-            Arrays.asList("[", "{\"value\":{\"name\":\"name0\"},\"key\":\"key0\"}", "]"),
+            List.of("[", "{\"value\":{\"name\":\"name0\"},\"key\":\"key0\"}", "]"),
             testBucketAccessor.readLines("topic0-0-10", compression));
         assertIterableEquals(
-            Arrays.asList("[", "{\"value\":{\"name\":\"name1\"},\"key\":\"key1\"}", "]"),
+            List.of("[", "{\"value\":{\"name\":\"name1\"},\"key\":\"key1\"}", "]"),
             testBucketAccessor.readLines("topic0-1-20", compression));
         assertIterableEquals(
-            Arrays.asList("[", "{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}", "]"),
+            List.of("[", "{\"value\":{\"name\":\"name2\"},\"key\":\"key2\"}", "]"),
             testBucketAccessor.readLines("topic1-0-30", compression));
     }
 
@@ -605,7 +734,7 @@ public class S3SinkTaskTest {
         final S3SinkTask task = new S3SinkTask();
         task.start(properties);
 
-        final List<SinkRecord> records = Arrays.asList(
+        final List<SinkRecord> records = List.of(
             createRecordWithStructValueSchema("topic0", 0, "key0", "name0", 10, 1000),
             createRecordWithStructValueSchema("topic0", 1, "key1", "name1", 20, 1001),
             createRecordWithStructValueSchema("topic1", 0, "key2", "name2", 30, 1002)
@@ -645,6 +774,7 @@ public class S3SinkTaskTest {
     @Test
     final void requestCredentialProviderFromFactoryOnStart() {
         final S3SinkTask task = new S3SinkTask();
+
         final AwsCredentialProviderFactory mockedFactory = Mockito.mock(AwsCredentialProviderFactory.class);
         final AWSCredentialsProvider provider = Mockito.mock(AWSCredentialsProvider.class);
 
@@ -759,4 +889,5 @@ public class S3SinkTaskTest {
         }
         return !h1Iterator.hasNext() && !h2Iterator.hasNext();
     }
+
 }

@@ -59,6 +59,7 @@ import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_FIELDS;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.TIMESTAMP_SOURCE;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.TIMESTAMP_TIMEZONE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class S3SinkConfigTest {
@@ -107,6 +108,10 @@ class S3SinkConfigTest {
         );
         assertEquals(FormatType.forName("csv"), conf.getFormatType());
         assertEquals(S3OutputStream.DEFAULT_PART_SIZE, conf.getAwsS3PartSize());
+        assertNull(conf.getKafkaRetryBackoffMs());
+        assertEquals(S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT, conf.getS3RetryBackoffDelayMs());
+        assertEquals(S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT, conf.getS3RetryBackoffMaxDelayMs());
+        assertEquals(S3SinkConfig.S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT, conf.getS3RetryBackoffMaxRetries());
     }
 
     @Test
@@ -535,6 +540,79 @@ class S3SinkConfigTest {
                 + "for configuration format.output.fields: "
                 + "supported values are: 'key', 'value', 'offset', 'timestamp', 'headers'",
             t.getMessage()
+        );
+    }
+
+    @Test
+    void customAwsS3BackoffPolicy() {
+        final var props = Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG, "2000",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG, "4000",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "10"
+        );
+        final var config = new S3SinkConfig(props);
+
+        assertEquals(2000L, config.getS3RetryBackoffDelayMs());
+        assertEquals(4000L, config.getS3RetryBackoffMaxDelayMs());
+        assertEquals(10, config.getS3RetryBackoffMaxRetries());
+    }
+
+    @Test
+    void wrongAwsS3BackoffPolicy() {
+        final var wrongDelayProps = Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG, "0"
+        );
+        final var wrongDelayE =
+                assertThrows(ConfigException.class, () -> new S3SinkConfig(wrongDelayProps));
+        assertEquals(
+                "Invalid value 0 for configuration aws.s3.backoff.delay.ms: Value must be at least 1",
+                wrongDelayE.getMessage()
+        );
+
+        final var wrongMaxDelayProps = Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG, "0"
+        );
+        final var wrongMaxDelayE =
+                assertThrows(ConfigException.class, () -> new S3SinkConfig(wrongMaxDelayProps));
+        assertEquals(
+                "Invalid value 0 for configuration aws.s3.backoff.max.delay.ms: Value must be at least 1",
+                wrongMaxDelayE.getMessage()
+        );
+
+        final var wrongMaxRetriesProps = Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "0"
+        );
+        final var wrongMaxRetriesE =
+                assertThrows(ConfigException.class, () -> new S3SinkConfig(wrongMaxRetriesProps));
+        assertEquals(
+                "Invalid value 0 for configuration aws.s3.backoff.max.retries: Value must be at least 1",
+                wrongMaxRetriesE.getMessage()
+        );
+
+        final var tooBigMaxRetriesProps = Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "35"
+        );
+        final var tooBigMaxRetriesE =
+                assertThrows(ConfigException.class, () -> new S3SinkConfig(tooBigMaxRetriesProps));
+        assertEquals(
+                "Invalid value 35 for configuration aws.s3.backoff.max.retries: "
+                        + "Value must be no more than 30",
+                tooBigMaxRetriesE.getMessage()
         );
     }
 

@@ -41,6 +41,10 @@ import io.aiven.kafka.connect.common.templating.VariableTemplatePart;
 import io.aiven.kafka.connect.s3.config.AwsCredentialProviderFactory;
 import io.aiven.kafka.connect.s3.config.S3SinkConfig;
 
+import com.amazonaws.PredefinedClientConfigurations;
+import com.amazonaws.retry.PredefinedBackoffStrategies;
+import com.amazonaws.retry.PredefinedRetryPolicies;
+import com.amazonaws.retry.RetryPolicy;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.slf4j.Logger;
@@ -62,33 +66,48 @@ public class S3SinkTask extends SinkTask {
 
     // required by Connect
     public S3SinkTask() {
-
     }
 
     @Override
     public void start(final Map<String, String> props) {
         Objects.requireNonNull(props, "props hasn't been set");
         config = new S3SinkConfig(props);
-
-        final var awsEndpointConfig = newEndpointConfiguration(this.config);
-        final var s3ClientBuilder =
-            AmazonS3ClientBuilder
-                .standard()
-                .withCredentials(
-                    credentialFactory.getProvider(config)
-                );
-        if (Objects.isNull(awsEndpointConfig)) {
-            s3ClientBuilder.withRegion(config.getAwsS3Region());
-        } else {
-            s3ClientBuilder.withEndpointConfiguration(awsEndpointConfig).withPathStyleAccessEnabled(true);
-        }
-        s3Client = s3ClientBuilder.build();
-
+        s3Client = createAmazonS3Client(config);
         try {
             recordGrouper = RecordGrouperFactory.newRecordGrouper(config);
         } catch (final Exception e) {
             throw new ConnectException("Unsupported file name template " + config.getFilename(), e);
         }
+        if (Objects.nonNull(config.getKafkaRetryBackoffMs())) {
+            context.timeout(config.getKafkaRetryBackoffMs());
+        }
+    }
+
+    private AmazonS3 createAmazonS3Client(final S3SinkConfig config) {
+        final var awsEndpointConfig = newEndpointConfiguration(this.config);
+        final var clientConfig =
+                PredefinedClientConfigurations.defaultConfig()
+                        .withRetryPolicy(new RetryPolicy(
+                                PredefinedRetryPolicies.DEFAULT_RETRY_CONDITION,
+                                new PredefinedBackoffStrategies.FullJitterBackoffStrategy(
+                                        Math.toIntExact(config.getS3RetryBackoffDelayMs()),
+                                        Math.toIntExact(config.getS3RetryBackoffMaxDelayMs())
+                                ),
+                                config.getS3RetryBackoffMaxRetries(),
+                                false)
+                        );
+        final var s3ClientBuilder =
+                AmazonS3ClientBuilder
+                        .standard()
+                        .withCredentials(
+                                credentialFactory.getProvider(config)
+                        ).withClientConfiguration(clientConfig);
+        if (Objects.isNull(awsEndpointConfig)) {
+            s3ClientBuilder.withRegion(config.getAwsS3Region());
+        } else {
+            s3ClientBuilder.withEndpointConfiguration(awsEndpointConfig).withPathStyleAccessEnabled(true);
+        }
+        return s3ClientBuilder.build();
     }
 
     @Override

@@ -54,7 +54,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class S3SinkConfig extends AivenCommonConfig {
-    private static final Logger log = LoggerFactory.getLogger(S3SinkConfig.class);
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
 
     @Deprecated
     public static final String AWS_ACCESS_KEY_ID = "aws_access_key_id";
@@ -107,7 +108,6 @@ public class S3SinkConfig extends AivenCommonConfig {
     //      as soon we will migrate to new values it must be set to HIGH
     //      same for default value
 
-    public static final Logger LOGGER = LoggerFactory.getLogger(S3SinkConfig.class);
     public static final String AWS_STS_ROLE_ARN = "aws.sts.role.arn";
     public static final String AWS_STS_ROLE_EXTERNAL_ID = "aws.sts.role.external.id";
     public static final String AWS_STS_ROLE_SESSION_NAME = "aws.sts.role.session.name";
@@ -118,6 +118,22 @@ public class S3SinkConfig extends AivenCommonConfig {
     private static final String GROUP_FILE = "File";
     private static final String GROUP_FORMAT = "Format";
     private static final String GROUP_AWS_STS = "AWS STS";
+
+    private static final String GROUP_S3_RETRY_BACKOFF_POLICY = "S3 retry backoff policy";
+
+    public static final String AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG = "aws.s3.backoff.delay.ms";
+    public static final String AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG = "aws.s3.backoff.max.delay.ms";
+    public static final String AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG = "aws.s3.backoff.max.retries";
+    // Default values from AWS SDK, since they are hidden
+    public static final int AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT = 100;
+    public static final int AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT = 20 * 1000;
+    // Comment in AWS SDK for max retries:
+    // Maximum retry limit. Avoids integer overflow issues.
+    //
+    // NOTE: If the value is greater than 30, there can be integer overflow
+    // issues during delay calculation.
+    //in other words we can't use values greater than 30
+    public static final int S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT = 30;
 
     public S3SinkConfig(final Map<String, String> properties) {
         super(configDef(), preprocessProperties(properties));
@@ -145,7 +161,7 @@ public class S3SinkConfig extends AivenCommonConfig {
                     .replaceAll(matchResult -> matchResult.group().replace("YYYY", "yyyy"));
 
                 if (!template.equals(originalTemplate)) {
-                    log.warn("{{timestamp:unit=YYYY}} is no longer supported, "
+                    LOGGER.warn("{{timestamp:unit=YYYY}} is no longer supported, "
                             + "please use {{timestamp:unit=yyyy}} instead. "
                             + "It was automatically replaced: {}",
                         template);
@@ -165,6 +181,8 @@ public class S3SinkConfig extends AivenCommonConfig {
         addOutputFieldsFormatConfigGroup(configDef, null);
         addDeprecatedTimestampConfig(configDef);
         addDeprecatedConfiguration(configDef);
+        addKafkaBackoffPolicy(configDef);
+        addS3RetryPolicies(configDef);
         return configDef;
     }
 
@@ -276,6 +294,51 @@ public class S3SinkConfig extends AivenCommonConfig {
                 AWS_S3_PART_SIZE
         );
 
+    }
+
+    private static void addS3RetryPolicies(final ConfigDef configDef) {
+        var retryPolicyGroupCounter = 0;
+        configDef.define(
+                AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT,
+                ConfigDef.Range.atLeast(1L),
+                ConfigDef.Importance.MEDIUM,
+                "S3 default base sleep time for non-throttled exceptions in milliseconds. "
+                        + "Default is " + AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT + ".",
+                GROUP_S3_RETRY_BACKOFF_POLICY,
+                retryPolicyGroupCounter++,
+                ConfigDef.Width.NONE,
+                AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG
+        );
+        configDef.define(
+                AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT,
+                ConfigDef.Range.atLeast(1L),
+                ConfigDef.Importance.MEDIUM,
+                "S3 maximum back-off time before retrying a request in milliseconds. "
+                        + "Default is " + AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT + ".",
+                GROUP_S3_RETRY_BACKOFF_POLICY,
+                retryPolicyGroupCounter++,
+                ConfigDef.Width.NONE,
+                AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG
+        );
+        configDef.define(
+                AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG,
+                ConfigDef.Type.INT,
+                S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT,
+                ConfigDef.Range.between(1L, S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT),
+                ConfigDef.Importance.MEDIUM,
+                "Maximum retry limit "
+                        + "(if the value is greater than 30, "
+                        + "there can be integer overflow issues during delay calculation). "
+                        + "Default is " + S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT + ".",
+                GROUP_S3_RETRY_BACKOFF_POLICY,
+                retryPolicyGroupCounter++,
+                ConfigDef.Width.NONE,
+                AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG
+        );
     }
 
     private static void addAwsStsConfigGroup(final ConfigDef configDef) {
@@ -722,6 +785,18 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     public int getAwsS3PartSize() {
         return getInt(AWS_S3_PART_SIZE);
+    }
+
+    public long getS3RetryBackoffDelayMs() {
+        return getLong(AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG);
+    }
+
+    public long getS3RetryBackoffMaxDelayMs() {
+        return getLong(AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG);
+    }
+
+    public int getS3RetryBackoffMaxRetries() {
+        return getInt(AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG);
     }
 
     public CompressionType getCompressionType() {
