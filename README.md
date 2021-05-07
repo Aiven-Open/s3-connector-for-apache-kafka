@@ -2,11 +2,11 @@
 
 ![Pull Request Workflow](https://github.com/aiven/aiven-kafka-connect-s3/workflows/Pull%20Request%20Workflow/badge.svg)
 
-This is a sink Kafka Connect connector that stores Kafka messages in a AWS S3 bucket.
+This is a sink Kafka Connect connector that stores Kafka messages in an AWS S3 bucket.
 
 The connector requires Java 11 or newer for development and production.
 
-## How to works
+## How it works
 
 The connector subscribes to the specified Kafka topics and collects messages coming in them and periodically dumps the collected data to the specified bucket in AWS S3.
 The connector needs the following permissions to the specified bucket:
@@ -50,7 +50,7 @@ template for file names.
     Configuration property `file.name.template`. If not set, default template is used: `{{topic}}-{{partition}}-{{start_offset}}`
 
 It supports placeholders with variable names:
-`{{ variable_name }}`. Currently supported variables are:
+`{{ variable_name }}`. Currently, supported variables are:
 - `topic` - the Kafka topic;
 - `partition` - the Kafka partition;
 - `start_offset:padding=true|false` - the Kafka offset of the first record in the file, if `padding` sets to `true` will set leading zeroes for offset, default is `false`;
@@ -79,7 +79,7 @@ Please see the description of properties in the "Configuration" section.
 Only the certain combinations of variables and parameters are allowed in the file name
 template (however, variables in a template can be in any order). Each
 combination determines the mode of record grouping the connector will
-use. Currently supported combinations of variables and the corresponding
+use. Currently, supported combinations of variables and the corresponding
 record grouping modes are:
 - `topic`, `partition`, `start_offset`, and `timestamp` - grouping by the topic,
   partition, and timestamp;
@@ -96,7 +96,7 @@ Incoming records are being grouped until flushed.
 #### Grouping by the topic and partition
 
 In this mode, the connector groups records by the topic and partition.
-When a file is written, a offset of the first record in it is added to
+When a file is written, an offset of the first record in it is added to
 its name.
 
 For example, let's say the template is
@@ -181,7 +181,7 @@ If keys of you records are strings, you may want to use
 
 The `group by key` mode primarily targets scenarios where each key
 appears in one partition only. If the same key appears in multiple
-partitions the result may be unexpected.
+partitions, the result may be unexpected.
 
 For example:
 ```
@@ -206,7 +206,7 @@ The connector creates one file per Kafka Connect `offset.flush.interval.ms` sett
 Output files are text files that contain one record per line (i.e.,
 they're separated by `\n`) except `PARQUET` format.
 
-There are three types of data format available: 
+There are four types of data format available: 
  - **[Default]** Flat structure, where field values are separated by comma (`csv`)
 
     Configuration: ```format.output.type=csv```. 
@@ -227,7 +227,7 @@ There are three types of data format available:
 
 The connector can output the following fields from records into the
 output: the key, the value, the timestamp, the offset and headers. (The set and the order of
-output: the key, the value, the timestamp, the offset and headers. (The set of
+output: the key, the value, the timestamp, the offset and headers. The set of
 these output fields is configurable.) The field values are separated by comma.
 
 
@@ -319,6 +319,34 @@ as `key.converter` and/or `value.converter` to make output files human-readable.
  - Value/Key schema will not be presented in output file, even if `value.converter.schemas.enable` property is `true`.
  But, it is still important to set this property correctly, so that connector could read records correctly. 
 
+
+##### NB!
+
+For both JSON and JSONL another example could be for a single field output e.g. `value`, a record line might look like:
+
+```json
+{ "value": "v0" }
+```
+
+OR
+
+```json
+{ "value": {"name": "John", "address": {"city": "London"}} }
+```
+
+In this case it sometimes make sense to get rid of additional JSON object wrapping the actual value using `format.output.envelope`.
+Having `format.output.envelope=false` can produce the following output:
+
+```json
+"v0"
+```
+
+OR
+
+```json
+{"name": "John", "address": {"city": "London"}}
+```
+
 #### Parquet format example
 
 For example, if we output `key,offset,timestamp,headers,value`, an output Parquet schema might look like this:
@@ -371,6 +399,20 @@ the final `Avro` schema for `Parquet` is:
 }
 ```
 
+
+For a single-field output e.g. `value`, a record line might look like:
+
+```json
+{ "value": {"name": "John", "address": {"city": "London"}} }
+```
+
+In this case it sometimes make sense to get rid of additional JSON object wrapping the actual value using `format.output.envelope`.
+Having `format.output.envelope=false` can produce the following output:
+
+```json
+{"name": "John", "address": {"city": "London"}}
+```
+
 **NB!**
 - The value of the `format.output.fields.value.encoding` property is ignored for this data format.
 - Due to Avro limitation message headers values must be the same datatype
@@ -382,10 +424,11 @@ the final `Avro` schema for `Parquet` is:
         "fields": [
           {"type":"string", "field": "name"}
         ]
-      }, "payload": {"name":  "foo"}}
+      }, "payload": {"name":  "foo"}
     }
     ```
 - Connector works just fine with and without Schema Registry
+- `format.output.envelope=false` is ignored if the value is not of type `org.apache.avro.Schema.Type.RECORD` or `org.apache.avro.Schema.Type.MAP`.
 
 ## Usage
 
@@ -485,6 +528,10 @@ aws.s3.bucket.name=my-bucket
 # Optional, the default is `value`.
 format.output.fields=key,value,offset,timestamp
 
+# The option to enable/disable wrapping of plain values into additional JSON object(aka envelope)
+# Optional, the default value is `true`.
+format.output.envelope=true
+
 # The compression type used for files put on GCS.
 # The supported values are: `gzip`, `snappy`, `zstd`, `none`.
 # Optional, the default is `none`.
@@ -517,7 +564,7 @@ After that, the latest changes you've done to Commons will be used.
 
 When you finish developing the feature and is sure Commons won't need to change:
 1. Make a proper release of Commons.
-2. Publish the artifact to the currently used globally accesible repository.
+2. Publish the artifact to the currently used globally accessible repository.
 3. Change the version of Commons in the connector to the published one.
 
 ### Integration testing
