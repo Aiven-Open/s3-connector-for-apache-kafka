@@ -126,14 +126,14 @@ public class S3SinkConfig extends AivenCommonConfig {
     public static final String AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG = "aws.s3.backoff.max.retries";
     // Default values from AWS SDK, since they are hidden
     public static final int AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT = 100;
-    public static final int AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT = 20 * 1000;
+    public static final int AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT = 20_000;
     // Comment in AWS SDK for max retries:
     // Maximum retry limit. Avoids integer overflow issues.
     //
     // NOTE: If the value is greater than 30, there can be integer overflow
     // issues during delay calculation.
     //in other words we can't use values greater than 30
-    public static final int S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT = 30;
+    public static final int S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT = 3;
 
     public S3SinkConfig(final Map<String, String> properties) {
         super(configDef(), preprocessProperties(properties));
@@ -286,8 +286,8 @@ public class S3SinkConfig extends AivenCommonConfig {
                 },
                 Importance.MEDIUM,
                 "The Part Size in S3 Multi-part Uploads in bytes. Maximum is "
-                        + Integer.MAX_VALUE + " (~2GB) and default is "
-                        + S3OutputStream.DEFAULT_PART_SIZE + " (5 MB)",
+                        + Integer.MAX_VALUE + " (2GB) and default is "
+                        + S3OutputStream.DEFAULT_PART_SIZE + " (5MB)",
                 GROUP_AWS,
                 awsGroupCounter++,
                 ConfigDef.Width.NONE,
@@ -328,7 +328,7 @@ public class S3SinkConfig extends AivenCommonConfig {
                 AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG,
                 ConfigDef.Type.INT,
                 S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT,
-                ConfigDef.Range.between(1L, S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT),
+                ConfigDef.Range.between(1L, 30),
                 ConfigDef.Importance.MEDIUM,
                 "Maximum retry limit "
                         + "(if the value is greater than 30, "
