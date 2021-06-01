@@ -52,8 +52,8 @@ template for file names.
 It supports placeholders with variable names:
 `{{ variable_name }}`. Currently, supported variables are:
 - `topic` - the Kafka topic;
-- `partition` - the Kafka partition;
-- `start_offset:padding=true|false` - the Kafka offset of the first record in the file, if `padding` sets to `true` will set leading zeroes for offset, default is `false`;
+- `partition:padding=true|false` - the Kafka partition, if `padding` set to `true` it will set leading zeroes for offset, the default value is `false`;
+- `start_offset:padding=true|false` - the Kafka offset of the first record in the file, if `padding` set to `true` it will set leading zeroes for offset, the default value is `false`;
 - `timestamp:unit=yyyy|MM|dd|HH` - the timestamp of when the Kafka record has been processed by the connector.
    - `unit` parameter values:
      - `yyyy` - year, e.g. `2020` (please note that `YYYY` is deprecated and is interpreted as `yyyy`)
@@ -67,6 +67,11 @@ To add zero padding to Kafka offsets, you need to add additional parameter `padd
 which value can be `true` or `false` (the default). 
 For example: `{{topic}}-{{partition}}-{{start_offset:padding=true}}.gz` 
 will produce file names like `mytopic-1-00000000000000000001.gz`.
+
+To add zero padding to partition number, you need to add additional parameter `padding` in the `partiiton` variable,
+which value can be `true` or `false` (the default).
+For example: `{{topic}}-{{partition:padding=true}}-{{start_offset}}.gz`
+will produce file names like `mytopic-0000000001-1.gz`.
 
 To add formatted timestamps, use `timestamp` variable.<br/>
 For example: `{{topic}}-{{partition}}-{{start_offset}}-{{timestamp:unit=yyyy}}{{timestamp:unit=MM}}{{timestamp:unit=dd}}.gz` 
@@ -546,7 +551,7 @@ aws.secret.access.key=YOUR_AWS_SECRET_ACCESS_KEY
 aws.s3.region=us-east-1
 
 #File name template
-file.name.template=dir1/dir2/{{topic}}-{{partition}}-{{start_offset:padding=true}}.gz
+file.name.template=dir1/dir2/{{topic}}-{{partition:padding=true}}-{{start_offset:padding=true}}.gz
 
 #The name of the S3 bucket to use
 #Required.
