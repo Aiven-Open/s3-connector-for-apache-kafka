@@ -801,7 +801,8 @@ class S3SinkConfigTest {
         assertEquals(
             "Invalid value {{topic}}-{{timestamp:unit=YYYY}}-{{partition}}-{{start_offset:padding=true}}.gz "
                 + "for configuration file.name.template: unsupported set of template variables parameters, "
-                + "supported sets are: start_offset:padding=true|false,timestamp:unit=yyyy|MM|dd|HH",
+                + "supported sets are: "
+                + "partition:padding=true|false,start_offset:padding=true|false,timestamp:unit=yyyy|MM|dd|HH",
             t.getMessage());
     }
 
