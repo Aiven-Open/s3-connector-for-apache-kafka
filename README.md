@@ -1,4 +1,4 @@
-# Aiven Kafka S3 Connector
+# Kafka S3 Connector
 
 ![Pull Request Workflow](https://github.com/aiven/aiven-kafka-connect-s3/workflows/Pull%20Request%20Workflow/badge.svg)
 
