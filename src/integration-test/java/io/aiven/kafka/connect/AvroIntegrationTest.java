@@ -71,7 +71,7 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
 
     private static final String CONNECTOR_NAME = "aiven-s3-sink-connector";
     private static final String TEST_TOPIC_0 = "test-topic-0";
-    private static final String COMMON_PREFIX = "aiven-kafka-connect-s3-test-";
+    private static final String COMMON_PREFIX = "s3-connector-for-apache-kafka-test-";
     private static final int OFFSET_FLUSH_INTERVAL_MS = 5000;
 
     private static String s3Endpoint;

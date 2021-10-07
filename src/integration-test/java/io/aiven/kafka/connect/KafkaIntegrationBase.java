@@ -53,9 +53,9 @@ public interface KafkaIntegrationBase {
     }
 
     static File getPluginDir() throws IOException {
-        final File testDir = Files.createTempDirectory("aiven-kafka-connect-s3-test-").toFile();
+        final File testDir = Files.createTempDirectory("s3-connector-for-apache-kafka-test-").toFile();
 
-        final File pluginDir = new File(testDir, "plugins/aiven-kafka-connect-s3/");
+        final File pluginDir = new File(testDir, "plugins/s3-connector-for-apache-kafka/");
         assert pluginDir.mkdirs();
         return pluginDir;
     }
