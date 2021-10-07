@@ -7,4 +7,4 @@
  * in the user manual at https://docs.gradle.org/6.1.1/userguide/multi_project_builds.html
  */
 
-rootProject.name = 'aiven-kafka-connect-s3'
+rootProject.name = 's3-connector-for-apache-kafka'

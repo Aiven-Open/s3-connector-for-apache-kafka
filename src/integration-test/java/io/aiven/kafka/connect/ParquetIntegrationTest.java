@@ -84,7 +84,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
     private static final String TEST_TOPIC_1 = "test-topic-1";
 
-    private static final String COMMON_PREFIX = "aiven-kafka-connect-s3-test-";
+    private static final String COMMON_PREFIX = "s3-connector-for-apache-kafka-test-";
 
     private static final int OFFSET_FLUSH_INTERVAL_MS = 5000;
 

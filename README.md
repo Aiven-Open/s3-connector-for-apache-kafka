@@ -1,6 +1,6 @@
-# Kafka S3 Connector
+# Aiven's S3 Sink Connector for Apache Kafka
 
-![Pull Request Workflow](https://github.com/aiven/aiven-kafka-connect-s3/workflows/Pull%20Request%20Workflow/badge.svg)
+![Pull Request Workflow](https://github.com/aiven/s3-connector-for-apache-kafka/workflows/Pull%20Request%20Workflow/badge.svg)
 
 This is a sink Kafka Connect connector that stores Kafka messages in an AWS S3 bucket.
 

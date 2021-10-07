@@ -243,7 +243,7 @@ jar {
 }
 
 processResources {
-    filesMatching('aiven-kafka-connect-s3-version.properties') {
+    filesMatching('s3-connector-for-apache-kafka-version.properties') {
         expand(version: version)
     }
 }
@@ -252,15 +252,15 @@ publishing {
     publications {
         maven(MavenPublication) {
             groupId = getGroup()
-            artifactId = "aiven-kafka-connect-s3"
+            artifactId = "s3-connector-for-apache-kafka"
             version = getVersion()
 
             from components.java
 
             pom {
-                name = "Aiven Kafka S3 sink connector"
-                description = "Aiven Kafka S3 sink connector"
-                url = "https://github.com/aiven/aiven-kafka-connect-s3"
+                name = "Aiven's S3 Sink Connector for Apache Kafka"
+                description = "Aiven's S3 Sink Connector for Apache Kafka"
+                url = "https://github.com/aiven/s3-connector-for-apache-kafka"
                 organization {
                     name = "Aiven Oy"
                     url = "https://aiven.io"
@@ -283,9 +283,9 @@ publishing {
                 }
 
                 scm {
-                    connection = 'scm:git:git://github.com:aiven/aiven-kafka-connect-s3.git'
-                    developerConnection = 'scm:git:ssh://github.com:aiven/aiven-kafka-connect-s3.git'
-                    url = 'https://github.com/aiven/aiven-kafka-connect-s3'
+                    connection = 'scm:git:git://github.com:aiven/s3-connector-for-apache-kafka.git'
+                    developerConnection = 'scm:git:ssh://github.com:aiven/s3-connector-for-apache-kafka.git'
+                    url = 'https://github.com/aiven/s3-connector-for-apache-kafka'
                 }
             }
         }
