@@ -76,7 +76,7 @@ ext {
     amazonS3Version = "1.11.718"
     amazonSTSVersion = "1.11.718"
     slf4jVersion = "1.7.30"
-    aivenConnectCommonsVersion = "0.7.0"
+    aivenConnectCommonsVersion = "0.7.1"
     junitVersion = "5.7.1"
     testcontainersVersion = "1.15.3"
     localstackVersion = "0.2.14"
@@ -116,7 +116,7 @@ dependencies {
     implementation "org.slf4j:slf4j-api:$slf4jVersion"
     implementation "com.amazonaws:aws-java-sdk-s3:$amazonS3Version"
     implementation "com.amazonaws:aws-java-sdk-sts:$amazonSTSVersion"
-    implementation "io.aiven:aiven-kafka-connect-commons:$aivenConnectCommonsVersion"
+    implementation "io.aiven:commons-for-apache-kafka-connect:$aivenConnectCommonsVersion"
 
     testImplementation "org.xerial.snappy:snappy-java:1.1.7.5"
     testImplementation "com.github.luben:zstd-jni:1.4.5-4"
