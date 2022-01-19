@@ -2,7 +2,7 @@
 
 ![Pull Request Workflow](https://github.com/aiven/s3-connector-for-apache-kafka/workflows/Pull%20Request%20Workflow/badge.svg)
 
-This is a sink Kafka Connect connector that stores Kafka messages in an AWS S3 bucket.
+This is a sink Apache Kafka Connect connector that stores Apache Kafka messages in an AWS S3 bucket.
 
 The connector requires Java 11 or newer for development and production.
 
@@ -204,7 +204,7 @@ Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnect
 ### S3 Object Names
 
 S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]`. The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
-The connector creates one file per Kafka Connect `offset.flush.interval.ms` setting for partitions that have received new messages during that period. The setting defaults to 60 seconds.
+The connector creates one file per Apache Kafka Connect `offset.flush.interval.ms` setting for partitions that have received new messages during that period. The setting defaults to 60 seconds.
 
 ### Data File Format
 
@@ -446,9 +446,9 @@ To configure S3 multi-part uploads buffer size change:
 
 There are four configuration properties to configure retry strategy exists.
 
-### Kafka connect retry strategy configuration property
+### Apache Kafka connect retry strategy configuration property
 
-- `kafka.retry.backoff.ms` - The retry backoff in milliseconds. This config is used to notify Kafka Connect to retry delivering a message batch or
+- `kafka.retry.backoff.ms` - The retry backoff in milliseconds. This config is used to notify Apache Kafka Connect to retry delivering a message batch or
   performing recovery in case of transient exceptions. Maximum value is `24` hours.
 
 ### AWS S3 retry strategy configuration properties
@@ -619,6 +619,10 @@ directory:
 ./gradlew clean integrationTest
 ```
 
-# License
+## License
 
 This project is licensed under the [Apache License, Version 2.0](LICENSE).
+
+## Trademarks
+
+Apache Kafka, Apache Kafka Connect are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries. AWS S3 is a trademark and property of their respective owners. All product and service names used in this website are for identification purposes only and do not imply endorsement.
