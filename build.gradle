@@ -93,7 +93,7 @@ ext {
     amazonSTSVersion = "1.11.718"
     slf4jVersion = "1.7.30"
     aivenConnectCommonsVersion = "0.7.1"
-    junitVersion = "5.7.1"
+    junitVersion = "5.8.2"
     testcontainersVersion = "1.15.3"
     localstackVersion = "0.2.14"
     mockitoVersion = "3.9.0"
