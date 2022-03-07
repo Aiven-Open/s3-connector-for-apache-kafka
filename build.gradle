@@ -88,7 +88,7 @@ ext {
     kafkaVersion = "1.1.0"
     // Compatible with Kafka version:
     // https://docs.confluent.io/current/installation/versions-interoperability.html
-    confluentPlatformVersion = "4.1.4"
+    confluentPlatformVersion = "7.0.1"
     amazonS3Version = "1.11.718"
     amazonSTSVersion = "1.11.718"
     slf4jVersion = "1.7.30"
