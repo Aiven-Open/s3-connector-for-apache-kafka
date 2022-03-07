@@ -91,7 +91,7 @@ ext {
     confluentPlatformVersion = "4.1.4"
     amazonS3Version = "1.11.718"
     amazonSTSVersion = "1.11.718"
-    slf4jVersion = "1.7.30"
+    slf4jVersion = "1.7.36"
     aivenConnectCommonsVersion = "0.7.1"
     junitVersion = "5.7.1"
     testcontainersVersion = "1.15.3"
