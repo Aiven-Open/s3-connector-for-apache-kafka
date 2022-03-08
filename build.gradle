@@ -134,7 +134,7 @@ dependencies {
     implementation "com.amazonaws:aws-java-sdk-sts:$amazonSTSVersion"
     implementation "io.aiven:commons-for-apache-kafka-connect:$aivenConnectCommonsVersion"
 
-    testImplementation "org.xerial.snappy:snappy-java:1.1.7.5"
+    testImplementation "org.xerial.snappy:snappy-java:1.1.8.4"
     testImplementation "com.github.luben:zstd-jni:1.5.2-2"
 
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
