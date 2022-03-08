@@ -135,7 +135,7 @@ dependencies {
     implementation "io.aiven:commons-for-apache-kafka-connect:$aivenConnectCommonsVersion"
 
     testImplementation "org.xerial.snappy:snappy-java:1.1.7.5"
-    testImplementation "com.github.luben:zstd-jni:1.4.5-4"
+    testImplementation "com.github.luben:zstd-jni:1.5.2-2"
 
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
     testImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
@@ -207,7 +207,7 @@ dependencies {
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
 
-    testImplementation 'org.assertj:assertj-core:3.19.0'
+    testImplementation 'org.assertj:assertj-core:3.22.0'
 }
 
 checkstyle {
