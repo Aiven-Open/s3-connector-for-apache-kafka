@@ -85,7 +85,7 @@ repositories {
 }
 
 ext {
-    kafkaVersion = "1.1.0"
+    kafkaVersion = "7.0.1-ce"
     // Compatible with Kafka version:
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
