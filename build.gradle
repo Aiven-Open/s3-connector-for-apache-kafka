@@ -144,7 +144,7 @@ dependencies {
 
     testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
 
-    testImplementation "io.findify:s3mock_2.11:0.2.3"
+    testImplementation "io.findify:s3mock_2.11:0.2.6"
 
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
