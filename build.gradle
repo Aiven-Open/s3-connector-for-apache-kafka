@@ -95,7 +95,7 @@ ext {
     aivenConnectCommonsVersion = "0.7.1"
     junitVersion = "5.8.2"
     testcontainersVersion = "1.16.3"
-    localstackVersion = "0.2.14"
+    localstackVersion = "0.2.20"
     mockitoVersion = "3.9.0"
 }
 
