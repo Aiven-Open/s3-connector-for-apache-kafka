@@ -161,7 +161,7 @@ dependencies {
     integrationTestImplementation "io.confluent:kafka-avro-serializer:$confluentPlatformVersion"
     integrationTestImplementation "io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion"
 
-    integrationTestImplementation "org.apache.avro:avro:1.8.1"
+    integrationTestImplementation "org.apache.avro:avro:1.11.0"
 
     testImplementation ("org.apache.parquet:parquet-tools:1.11.2") {
         exclude group: "org.slf4j", module: "slf4j-api"
