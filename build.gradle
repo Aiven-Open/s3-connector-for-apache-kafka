@@ -89,7 +89,7 @@ ext {
     // Compatible with Kafka version:
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
-    amazonS3Version = "1.12.180"
+    amazonS3Version = "1.12.181"
     amazonSTSVersion = "1.12.180"
     slf4jVersion = "1.7.36"
     aivenConnectCommonsVersion = "0.7.1"
