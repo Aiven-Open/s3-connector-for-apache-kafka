@@ -32,20 +32,17 @@ public final class OldFullKeyFormatters {
                 ? String.format("%020d", sinkRecord.kafkaOffset())
                 : Long.toString(sinkRecord.kafkaOffset());
 
-    public static final BiFunction<TimestampSource, VariableTemplatePart.Parameter, String> TIMESTAMP =
-        new BiFunction<>() {
-
-            private final Map<String, DateTimeFormatter> formatterMap =
-                Map.of(
+    private static final Map<String, DateTimeFormatter> TIMESTAMP_FORMATTERS =
+            Map.of(
                     "yyyy", DateTimeFormatter.ofPattern("yyyy"),
                     "MM", DateTimeFormatter.ofPattern("MM"),
                     "dd", DateTimeFormatter.ofPattern("dd"),
                     "HH", DateTimeFormatter.ofPattern("HH")
-                );
+            );
 
-            @Override
-            public String apply(final TimestampSource tsSource, final VariableTemplatePart.Parameter parameter) {
-                return tsSource.time().format(formatterMap.get(parameter.value()));
-            }
-        };
+    public static String timestamp(final SinkRecord record,
+                                   final TimestampSource tsSource,
+                                   final VariableTemplatePart.Parameter parameter) {
+        return tsSource.time(record).format(TIMESTAMP_FORMATTERS.get(parameter.value()));
+    }
 }

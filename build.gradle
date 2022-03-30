@@ -92,7 +92,7 @@ ext {
     amazonS3Version = "1.12.188"
     amazonSTSVersion = "1.12.188"
     slf4jVersion = "1.7.36"
-    aivenConnectCommonsVersion = "0.7.1"
+    aivenConnectCommonsVersion = "0.8.2"
     junitVersion = "5.8.2"
     testcontainersVersion = "1.16.3"
     localstackVersion = "0.2.20"
@@ -158,8 +158,12 @@ dependencies {
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
 
-    integrationTestImplementation "io.confluent:kafka-avro-serializer:$confluentPlatformVersion"
-    integrationTestImplementation "io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion"
+    integrationTestImplementation("io.confluent:kafka-avro-serializer:$confluentPlatformVersion") {
+        exclude group: "org.apache.kafka", module: "kafka-clients"
+    }
+    integrationTestImplementation("io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion") {
+        exclude group: "org.apache.kafka", module: "kafka-clients"
+    }
 
     integrationTestImplementation "org.apache.avro:avro:1.11.0"
 
