@@ -172,7 +172,7 @@ public class S3SinkTask extends SinkTask {
                 .instance()
                 .bindVariable(
                     FilenameTemplateVariable.TIMESTAMP.name,
-                    parameter -> OldFullKeyFormatters.TIMESTAMP.apply(config.getTimestampSource(), parameter)
+                    parameter -> OldFullKeyFormatters.timestamp(record, config.getTimestampSource(), parameter)
                 )
                 .bindVariable(
                     FilenameTemplateVariable.PARTITION.name,

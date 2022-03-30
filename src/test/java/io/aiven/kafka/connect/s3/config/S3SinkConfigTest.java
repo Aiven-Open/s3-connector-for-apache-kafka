@@ -730,13 +730,15 @@ class S3SinkConfigTest {
 
         final var config = new S3SinkConfig(props);
 
-        final var expectedTimestamp = config.getTimestampSource().time();
+        // null record is fine here, because it's not needed for the wallclock timestamp source
+        final var expectedTimestamp = config.getTimestampSource().time(null);
 
         final var renderedPrefix =
             config.getPrefixTemplate()
                 .instance()
                 .bindVariable("timestamp", parameter ->
-                    OldFullKeyFormatters.TIMESTAMP.apply(config.getTimestampSource(), parameter))
+                    // null record is fine here, because it's not needed for the wall clock timestamp source
+                    OldFullKeyFormatters.timestamp(null, config.getTimestampSource(), parameter))
                 .render();
 
         assertEquals(
