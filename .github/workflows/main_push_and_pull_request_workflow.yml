@@ -1,15 +1,15 @@
-# The workflow to check master after push or pull request.
-name: Master and pull request checks
+# The workflow to check main after push or pull request.
+name: main and pull request checks
 on:
   push:
-    branches: [ master ]
+    branches: [main]
   pull_request:
-    branches: [ master ]
+    branches: [main]
 jobs:
   build:
     strategy:
       matrix:
-        java-version: [ 11, 17 ]
+        java-version: [11, 17]
         runs-on: [ubuntu-latest, macos-latest, windows-latest]
     name: Build on ${{ matrix.runs-on }} with jdk ${{ matrix.java-version }}
     runs-on: ${{ matrix.runs-on }}
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.java-version }}
-          distribution: 'temurin'
+          distribution: "temurin"
           cache: gradle
       - name: Build with Gradle
         run: ./gradlew build
