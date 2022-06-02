@@ -90,7 +90,7 @@ ext {
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
     amazonS3Version = "1.12.210"
-    amazonSTSVersion = "1.12.210"
+    amazonSTSVersion = "1.12.231"
     slf4jVersion = "1.7.36"
     aivenConnectCommonsVersion = "0.8.2"
     junitVersion = "5.8.2"
@@ -211,7 +211,7 @@ dependencies {
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
 
-    testImplementation 'org.assertj:assertj-core:3.22.0'
+    testImplementation 'org.assertj:assertj-core:3.23.1'
 }
 
 checkstyle {
