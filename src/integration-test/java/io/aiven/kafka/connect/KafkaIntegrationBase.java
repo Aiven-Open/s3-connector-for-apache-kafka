@@ -19,12 +19,15 @@ package io.aiven.kafka.connect;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Properties;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 
+import com.github.dockerjava.api.model.Ulimit;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.Network;
 
 
 public interface KafkaIntegrationBase {
@@ -58,5 +61,15 @@ public interface KafkaIntegrationBase {
         final File pluginDir = new File(testDir, "plugins/s3-connector-for-apache-kafka/");
         assert pluginDir.mkdirs();
         return pluginDir;
+    }
+
+    default KafkaContainer createKafkaContainer() {
+        return new KafkaContainer("5.2.1")
+            .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false")
+            .withNetwork(Network.newNetwork())
+            .withExposedPorts(KafkaContainer.KAFKA_PORT, 9092)
+            .withCreateContainerCmdModifier(cmd ->
+                cmd.getHostConfig().withUlimits(List.of(new Ulimit("nofile", 30000L, 30000L)))
+            );
     }
 }

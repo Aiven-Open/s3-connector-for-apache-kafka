@@ -59,7 +59,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.Network;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -88,10 +87,7 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     private static File pluginDir;
 
     @Container
-    private final KafkaContainer kafka = new KafkaContainer("5.2.1")
-            .withExposedPorts(KafkaContainer.KAFKA_PORT, 9092)
-            .withNetwork(Network.newNetwork())
-            .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false");
+    private final KafkaContainer kafka = createKafkaContainer();
     @Container
     private final SchemaRegistryContainer schemaRegistry = new SchemaRegistryContainer(kafka);
     private AdminClient adminClient;

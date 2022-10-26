@@ -96,8 +96,8 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
     Path tmpDir;
 
     @Container
-    private final KafkaContainer kafka = new KafkaContainer()
-            .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false");
+    private final KafkaContainer kafka = createKafkaContainer();
+
     private AdminClient adminClient;
     private KafkaProducer<byte[], byte[]> producer;
     private ConnectRunner connectRunner;
