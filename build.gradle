@@ -96,7 +96,7 @@ ext {
     junitVersion = "5.9.1"
     testcontainersVersion = "1.17.5"
     localstackVersion = "0.2.21"
-    mockitoVersion = "4.8.0"
+    mockitoVersion = "4.8.1"
 }
 
 sourceSets {
