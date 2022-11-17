@@ -121,6 +121,11 @@ public class BucketAccessor {
         }
     }
 
+    public final List<String> listObjects() {
+        return s3.listObjects(bucketName).getObjectSummaries().stream().map(S3ObjectSummary::getKey)
+            .collect(Collectors.toList());
+    }
+
     private InputStream getDecompressedStream(final InputStream inputStream, final String compression)
         throws IOException {
         Objects.requireNonNull(inputStream, "inputStream cannot be null");

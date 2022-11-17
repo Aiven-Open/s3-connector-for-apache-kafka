@@ -119,8 +119,11 @@ public class S3SinkTask extends SinkTask {
 
     @Override
     public void flush(final Map<TopicPartition, OffsetAndMetadata> offsets) {
-        recordGrouper.records().forEach(this::flushFile);
-        recordGrouper.clear();
+        try {
+            recordGrouper.records().forEach(this::flushFile);
+        } finally {
+            recordGrouper.clear();
+        }
     }
 
     private void flushFile(final String filename, final List<SinkRecord> records) {

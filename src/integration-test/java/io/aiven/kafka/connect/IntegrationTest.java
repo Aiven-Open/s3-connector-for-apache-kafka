@@ -51,6 +51,11 @@ import cloud.localstack.awssdkv1.TestUtils;
 import cloud.localstack.docker.LocalstackDockerExtension;
 import cloud.localstack.docker.annotation.LocalstackDockerProperties;
 import com.amazonaws.services.s3.AmazonS3;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.UrlPattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +67,8 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static com.amazonaws.SDKGlobalConfiguration.DISABLE_CERT_CHECKING_SYSTEM_PROPERTY;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -442,7 +449,9 @@ final class IntegrationTest implements KafkaIntegrationBase {
 
     @Test
     final void jsonOutput() throws ExecutionException, InterruptedException, IOException {
+        final var faultyProxy = enableFaultyProxy();
         final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(CONNECTOR_NAME));
+        connectorConfig.put("aws.s3.endpoint", faultyProxy.baseUrl());
         final String compression = "none";
         final String contentType = "json";
         connectorConfig.put("format.output.fields", "key,value");
@@ -457,11 +466,13 @@ final class IntegrationTest implements KafkaIntegrationBase {
         final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
 
         final int numEpochs = 10;
+        final int numPartitions = 4;
 
         final IndexesToString keyGen = (partition, epoch, currIdx) -> "key-" + currIdx;
-        final IndexesToString valueGen = (partition, epoch, currIdx) -> "[{" + "\"name\":\"user-" + currIdx + "\"}]";
+        final IndexesToString valueGen =
+            (partition, epoch, currIdx) -> "[{" + "\"name\":\"user-" + currIdx + "\"}]";
 
-        for (final KeyValueMessage msg : new KeyValueGenerator(4, numEpochs, keyGen, valueGen)) {
+        for (final KeyValueMessage msg : new KeyValueGenerator(numPartitions, numEpochs, keyGen, valueGen)) {
             sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, msg.partition, msg.key, msg.value));
         }
 
@@ -470,8 +481,9 @@ final class IntegrationTest implements KafkaIntegrationBase {
             sendFuture.get();
         }
 
-        // TODO more robust way to detect that Connect finished processing
-        Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
+        while (testBucketAccessor.listObjects().size() < numPartitions) {
+            Thread.sleep(OFFSET_FLUSH_INTERVAL_MS);
+        }
 
         final List<String> expectedBlobs = Arrays.asList(
             getNewBlobName(0, 0, compression),
@@ -485,30 +497,47 @@ final class IntegrationTest implements KafkaIntegrationBase {
         final Map<String, List<String>> blobContents = new HashMap<>();
         for (final String blobName : expectedBlobs) {
             final List<String> items = new ArrayList<>(testBucketAccessor.readLines(blobName, compression));
+            assertEquals(numEpochs + 2, items.size());
             blobContents.put(blobName, items);
         }
 
         // Each blob must be a JSON array.
-        final Map<String, List<String>> jsonContents = new HashMap<>();
-        for (int partition = 0; partition < 4; partition++) {
-            final String blobName = getNewBlobName(partition, 0, compression);
+        for (final KeyValueMessage msg : new KeyValueGenerator(numPartitions, numEpochs, keyGen, valueGen)) {
+            final String blobName = getNewBlobName(msg.partition, 0, compression);
             final List<String> blobContent = blobContents.get(blobName);
             assertEquals("[", blobContent.get(0));
             assertEquals("]", blobContent.get(blobContent.size() - 1));
-            jsonContents.put(blobName, blobContent.subList(1, blobContent.size() - 1));
-        }
-
-        for (final KeyValueMessage msg : new KeyValueGenerator(4, numEpochs, keyGen, valueGen)) {
-            final String blobName = getNewBlobName(msg.partition, 0, compression);
-            final String actualLine = blobContents.get(blobName).get(msg.epoch + 1);  // 0 is '['
+            final String actualLine = blobContent.get(msg.epoch + 1);  // 0 is '['
 
             String expectedLine = "{\"value\":" + msg.value + ",\"key\":\"" + msg.key + "\"}";
             if (actualLine.endsWith(",")) {
                 expectedLine += ",";
             }
-
             assertEquals(expectedLine, actualLine);
         }
+    }
+
+    private static WireMockServer enableFaultyProxy() {
+        System.setProperty(DISABLE_CERT_CHECKING_SYSTEM_PROPERTY, "true");
+        final WireMockServer wireMockServer = new WireMockServer(WireMockConfiguration.options().dynamicHttpsPort());
+        wireMockServer.start();
+        wireMockServer
+            .addStubMapping(WireMock.request(RequestMethod.ANY.getName(), UrlPattern.ANY)
+                .willReturn(aResponse().proxiedFrom(s3Endpoint)).build());
+        final String urlPathPattern = "/" + TEST_BUCKET_NAME + "/" + TEST_TOPIC_0 + "([\\-0-9]+)";
+        wireMockServer
+            .addStubMapping(WireMock.request(RequestMethod.POST.getName(),
+                    UrlPattern.fromOneOf(null, null, null, urlPathPattern))
+                .inScenario("temp-error").willSetStateTo("Error")
+                .willReturn(WireMock.aResponse().withStatus(400))
+                .build());
+        wireMockServer
+            .addStubMapping(WireMock.request(RequestMethod.POST.getName(),
+                    UrlPattern.fromOneOf(null, null, null, urlPathPattern))
+                .inScenario("temp-error").whenScenarioStateIs("Error")
+                .willReturn(aResponse().proxiedFrom(s3Endpoint))
+                .build());
+        return wireMockServer;
     }
 
     private KafkaProducer<byte[], byte[]> newProducer(final KafkaContainer kafka) {
