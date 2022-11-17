@@ -89,6 +89,7 @@ ext {
     junitVersion = "5.9.1"
     testcontainersVersion = "1.17.5"
     localstackVersion = "0.2.21"
+    wireMockVersion = "2.35.0"
     mockitoVersion = "4.8.1"
 }
 
@@ -150,6 +151,7 @@ dependencies {
     integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
+    integrationTestImplementation "com.github.tomakehurst:wiremock-jre8:$wireMockVersion"
 
     integrationTestImplementation("io.confluent:kafka-avro-serializer:$confluentPlatformVersion") {
         exclude group: "org.apache.kafka", module: "kafka-clients"
