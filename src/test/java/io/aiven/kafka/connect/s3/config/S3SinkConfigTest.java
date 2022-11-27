@@ -207,37 +207,6 @@ class S3SinkConfigTest {
     }
 
     @Test
-    final void emptyAwsAccessKeyID() {
-        final Map<String, String> props = new HashMap<>();
-        props.put(AWS_ACCESS_KEY_ID, "");
-        assertThatThrownBy(() -> new S3SinkConfig(props))
-            .isInstanceOf(ConfigException.class)
-            .hasMessage("Invalid value [hidden] for configuration aws_access_key_id: Password must be non-empty");
-
-        props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "");
-        assertThatThrownBy(() -> new S3SinkConfig(props))
-            .isInstanceOf(ConfigException.class)
-            .hasMessage("Invalid value [hidden] for configuration aws.access.key.id: Password must be non-empty");
-    }
-
-    @Test
-    final void emptyAwsSecretAccessKey() {
-        final Map<String, String> props = new HashMap<>();
-        props.put(AWS_ACCESS_KEY_ID, "blah-blah-blah");
-        props.put(AWS_SECRET_ACCESS_KEY, "");
-
-        assertThatThrownBy(() -> new S3SinkConfig(props))
-            .isInstanceOf(ConfigException.class)
-            .hasMessage("Invalid value [hidden] for configuration aws_secret_access_key: Password must be non-empty");
-
-        props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
-        props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "");
-        assertThatThrownBy(() -> new S3SinkConfig(props))
-            .isInstanceOf(ConfigException.class)
-            .hasMessage("Invalid value [hidden] for configuration aws.secret.access.key: Password must be non-empty");
-    }
-
-    @Test
     void wrongPartSize() {
         final var wrongMaxPartSizeProps =
             Map.of(
@@ -730,39 +699,6 @@ class S3SinkConfigTest {
         assertThat(conf.getStsRole().getExternalId()).isEqualTo("EXTERNAL_ID");
         assertThat(conf.getStsRole().getSessionName()).isEqualTo("SESSION_NAME");
         assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
-    }
-
-    @Test
-    void stsRoleEmptyArn() {
-        final var props = new HashMap<String, String>();
-
-        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
-        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
-        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
-
-        assertThatThrownBy(() -> new S3SinkConfig(props))
-            .isInstanceOf(ConfigException.class)
-            .hasMessage(
-                "Either {aws.access.key.id, aws.secret.access.key} or"
-                    + " {aws.sts.role.arn, aws.sts.role.session.name} should be set");
-    }
-
-    @Test
-    void stsRoleEmptySessionName() {
-        final var props = new HashMap<String, String>();
-
-        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
-        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
-        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
-
-        assertThatThrownBy(() -> new S3SinkConfig(props))
-            .isInstanceOf(ConfigException.class)
-            .hasMessage(
-                "Either {aws.access.key.id, aws.secret.access.key} or"
-                    + " {aws.sts.role.arn, aws.sts.role.session.name} should be set"
-            );
     }
 
     @Test
