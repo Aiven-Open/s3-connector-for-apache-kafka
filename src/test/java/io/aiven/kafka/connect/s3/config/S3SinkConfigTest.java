@@ -827,46 +827,6 @@ class S3SinkConfigTest {
     }
 
     @Test
-    void stsRoleEmptyArn() {
-        final var props = new HashMap<String, String>();
-
-        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
-        props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
-        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
-
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-                "Either {aws.access.key.id, aws.secret.access.key} or"
-                        + " {aws.sts.role.arn, aws.sts.role.session.name} should be set",
-                t.getMessage()
-        );
-    }
-
-    @Test
-    void stsRoleEmptySessionName() {
-        final var props = new HashMap<String, String>();
-
-        props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
-        props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
-        props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
-
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-                "Either {aws.access.key.id, aws.secret.access.key} or"
-                        + " {aws.sts.role.arn, aws.sts.role.session.name} should be set",
-                t.getMessage()
-        );
-    }
-
-    @Test
     void stsWrongSessionDuration() {
         final var props = new HashMap<String, String>();
 

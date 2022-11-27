@@ -49,6 +49,7 @@ import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.s3.S3OutputStream;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,9 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
+    public static final String AWS_CREDENTIAL_PROVIDER_CONFIG = "aws.credential.provider";
+    public static final String AWS_CREDENTIAL_PROVIDER_DEFAULT =
+            "com.amazonaws.auth.DefaultAWSCredentialsProviderChain";
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
     public static final String AWS_S3_ENDPOINT_CONFIG = "aws.s3.endpoint";
     public static final String AWS_S3_REGION_CONFIG = "aws.s3.region";
@@ -213,6 +217,18 @@ public class S3SinkConfig extends AivenCommonConfig {
             awsGroupCounter++,
             ConfigDef.Width.NONE,
             AWS_SECRET_ACCESS_KEY_CONFIG
+        );
+
+        configDef.define(
+                AWS_CREDENTIAL_PROVIDER_CONFIG,
+                Type.CLASS,
+                AWS_CREDENTIAL_PROVIDER_DEFAULT,
+                Importance.MEDIUM,
+                "AWS Credential Provider",
+                GROUP_AWS,
+                awsGroupCounter++,
+                ConfigDef.Width.NONE,
+                AWS_CREDENTIAL_PROVIDER_CONFIG
         );
 
         configDef.define(
@@ -686,17 +702,17 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     private void validate() {
         final AwsStsRole awsStsRole = getStsRole();
+
         if (!awsStsRole.isValid()) {
             final AwsAccessSecret awsNewSecret = getNewAwsCredentials();
             if (!awsNewSecret.isValid()) {
                 final AwsAccessSecret awsOldSecret = getOldAwsCredentials();
                 if (!awsOldSecret.isValid()) {
-                    throw new ConfigException(
-                            String.format(
-                                    "Either {%s, %s} or {%s, %s} should be set",
-                                    AWS_ACCESS_KEY_ID_CONFIG, AWS_SECRET_ACCESS_KEY_CONFIG,
-                                    AWS_STS_ROLE_ARN, AWS_STS_ROLE_SESSION_NAME)
-                    );
+                    LOGGER.info("Connector use % as credential Provider, "
+                                    + "when configuration for {%s, %s} OR {%s, %s} are absent",
+                            AWS_CREDENTIAL_PROVIDER_CONFIG,
+                            AWS_ACCESS_KEY_ID_CONFIG, AWS_SECRET_ACCESS_KEY_CONFIG,
+                            AWS_STS_ROLE_ARN, AWS_STS_ROLE_SESSION_NAME);
                 } else {
                     LOGGER.error(
                         String.format(
@@ -705,7 +721,7 @@ public class S3SinkConfig extends AivenCommonConfig {
                         ));
                 }
             }
-        } else {
+        } else if (awsStsRole.isValid()) {
             final AwsStsEndpointConfig stsEndpointConfig = getStsEndpointConfig();
             if (!stsEndpointConfig.isValid()
                 && !stsEndpointConfig.getServiceEndpoint().equals(AwsStsEndpointConfig.AWS_STS_GLOBAL_ENDPOINT)) {
@@ -916,5 +932,9 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     public Boolean usesFileNameTemplate() {
         return Objects.isNull(getString(AWS_S3_PREFIX_CONFIG)) && Objects.isNull(getString(AWS_S3_PREFIX));
+    }
+
+    public AWSCredentialsProvider getCredentials() {
+        return getConfiguredInstance(AWS_CREDENTIAL_PROVIDER_CONFIG, AWSCredentialsProvider.class);
     }
 }

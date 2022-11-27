@@ -58,6 +58,9 @@ public class AwsCredentialProviderFactory {
 
     private AWSCredentialsProvider getBasicAwsCredentialsProvider(final S3SinkConfig config) {
         final AwsAccessSecret awsCredentials = config.getAwsCredentials();
+        if (!awsCredentials.isValid()) {
+            return config.getCredentials();
+        }
         return new AWSStaticCredentialsProvider(
                 new BasicAWSCredentials(
                         awsCredentials.getAccessKeyId().value(),
