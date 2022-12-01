@@ -87,7 +87,7 @@ ext {
     slf4jVersion = "1.7.36"
     aivenConnectCommonsVersion = "0.8.2"
     junitVersion = "5.9.1"
-    testcontainersVersion = "1.17.5"
+    testcontainersVersion = "1.17.6"
     localstackVersion = "0.2.21"
     wireMockVersion = "2.35.0"
     mockitoVersion = "4.8.1"
