@@ -90,7 +90,7 @@ ext {
     testcontainersVersion = "1.17.5"
     localstackVersion = "0.2.21"
     wireMockVersion = "2.35.0"
-    mockitoVersion = "4.8.1"
+    mockitoVersion = "4.9.0"
 }
 
 sourceSets {
