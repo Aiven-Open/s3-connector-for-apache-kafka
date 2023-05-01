@@ -83,7 +83,7 @@ ext {
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
     amazonS3Version = "1.12.440"
-    amazonSTSVersion = "1.12.440"
+    amazonSTSVersion = "1.12.460"
     slf4jVersion = "1.7.36"
     aivenConnectCommonsVersion = "0.8.2"
     junitVersion = "5.9.2"
