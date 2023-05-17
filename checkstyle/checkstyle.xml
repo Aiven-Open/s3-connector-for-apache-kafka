@@ -288,7 +288,7 @@
 
         <!-- See http://checkstyle.sourceforge.net/config_metrics.html#ClassDataAbstractionCoupling -->
         <module name="ClassDataAbstractionCoupling">
-            <property name="max" value="10"/>
+            <property name="max" value="11"/>
         </module>
 
         <!-- See http://checkstyle.sourceforge.net/config_metrics.html#BooleanExpressionComplexity -->

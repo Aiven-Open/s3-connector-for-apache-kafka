@@ -780,7 +780,7 @@ class S3SinkConfigTest {
         );
         assertEquals(
             "Invalid value unknown for configuration format.output.type: "
-                + "supported values are: 'csv', 'json', 'jsonl', 'parquet'", t.getMessage());
+                + "supported values are: 'avro', 'csv', 'json', 'jsonl', 'parquet'", t.getMessage());
 
     }
 
