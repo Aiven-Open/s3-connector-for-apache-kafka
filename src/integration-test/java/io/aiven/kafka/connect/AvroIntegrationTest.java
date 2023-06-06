@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -46,13 +47,21 @@ import cloud.localstack.docker.LocalstackDockerExtension;
 import cloud.localstack.docker.annotation.LocalstackDockerProperties;
 import com.amazonaws.services.s3.AmazonS3;
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.file.SeekableByteArrayInput;
+import org.apache.avro.file.SeekableInput;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -85,6 +94,9 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
     private AdminClient adminClient;
     private KafkaProducer<String, GenericRecord> producer;
     private ConnectRunner connectRunner;
+
+    private final Schema avroInputDataSchema = new Schema.Parser().parse(
+        "{\"type\":\"record\",\"name\":\"input_data\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}");
 
     @BeforeAll
     static void setUpAll() throws IOException, InterruptedException {
@@ -121,6 +133,71 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
         connectRunner.awaitStop();
     }
 
+    private static Stream<Arguments> compressionAndCodecTestParameters() {
+        return Stream.of(Arguments.of("bzip2", "none"), Arguments.of("deflate", "none"), Arguments.of("null", "none"),
+            Arguments.of("snappy", "gzip"), // single test for codec and compression when both set.
+            Arguments.of("zstandard", "none"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("compressionAndCodecTestParameters")
+    void avroOutput(final String avroCodec, final String compression)
+            throws ExecutionException, InterruptedException, IOException {
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(CONNECTOR_NAME));
+        connectorConfig.put("file.compression.type", compression);
+        connectorConfig.put("format.output.fields", "key,value");
+        connectorConfig.put("format.output.type", "avro");
+        connectorConfig.put("avro.codec", avroCodec);
+        connectRunner.createConnector(connectorConfig);
+
+        final int recordCountPerPartition = 10;
+        produceRecords(recordCountPerPartition);
+
+        waitForConnectToFinishProcessing();
+
+        final List<String> expectedBlobs = Arrays.asList(
+            getAvroBlobName(0, 0, compression),
+            getAvroBlobName(1, 0, compression),
+            getAvroBlobName(2, 0, compression),
+            getAvroBlobName(3, 0, compression));
+        for (final String blobName : expectedBlobs) {
+            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+        }
+
+        final Map<String, List<GenericRecord>> blobContents = new HashMap<>();
+        final Map<String, Schema> gcsOutputAvroSchemas = new HashMap<>();
+        for (final String blobName : expectedBlobs) {
+            final byte[] blobBytes = testBucketAccessor.readBytes(blobName, compression);
+            try (SeekableInput sin = new SeekableByteArrayInput(blobBytes)) {
+                final GenericDatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
+                try (DataFileReader<GenericRecord> reader = new DataFileReader<>(sin, datumReader)) {
+                    final List<GenericRecord> items = new ArrayList<>();
+                    reader.forEach(items::add);
+                    blobContents.put(blobName, items);
+                    gcsOutputAvroSchemas.put(blobName, reader.getSchema());
+                }
+            }
+        }
+
+        int cnt = 0;
+        for (int i = 0; i < recordCountPerPartition; i++) {
+            for (int partition = 0; partition < 4; partition++) {
+                final String blobName = getAvroBlobName(partition, 0, compression);
+                final Schema gcsOutputAvroSchema = gcsOutputAvroSchemas.get(blobName);
+                final GenericData.Record expectedRecord = new GenericData.Record(gcsOutputAvroSchema);
+                expectedRecord.put("key", new Utf8("key-" + cnt));
+                final GenericData.Record valueRecord = new GenericData.Record(
+                    gcsOutputAvroSchema.getField("value").schema());
+                valueRecord.put("name", new Utf8("user-" + cnt));
+                expectedRecord.put("value", valueRecord);
+                cnt += 1;
+
+                final GenericRecord actualRecord = blobContents.get(blobName).get(i);
+                assertEquals(expectedRecord, actualRecord);
+            }
+        }
+    }
+
     @Test
     final void jsonlAvroOutputTest() throws ExecutionException, InterruptedException, IOException {
         final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(CONNECTOR_NAME));
@@ -135,28 +212,9 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
         connectorConfig.put("format.output.type", contentType);
         connectRunner.createConnector(connectorConfig);
 
-        final Schema valueSchema = new Schema.Parser().parse("{\"type\":\"record\",\"name\":\"value\","
-            + "\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}");
-
-        final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
-        int cnt = 0;
-        for (int i = 0; i < 10; i++) {
-            for (int partition = 0; partition < 4; partition++) {
-                final String key = "key-" + cnt;
-                final GenericRecord value = new GenericData.Record(valueSchema);
-                value.put("name", "user-" + cnt);
-                cnt += 1;
-
-                sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, partition, key, value));
-            }
-        }
-        producer.flush();
-        for (final Future<RecordMetadata> sendFuture : sendFutures) {
-            sendFuture.get();
-        }
-
-        // TODO more robust way to detect that Connect finished processing
-        Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
+        final int recordCountPerPartition = 10;
+        produceRecords(recordCountPerPartition);
+        waitForConnectToFinishProcessing();
 
         final List<String> expectedBlobs = Arrays.asList(
             getBlobName(0, 0, compression),
@@ -173,8 +231,8 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
             blobContents.put(blobName, items);
         }
 
-        cnt = 0;
-        for (int i = 0; i < 10; i++) {
+        int cnt = 0;
+        for (int i = 0; i < recordCountPerPartition; i++) {
             for (int partition = 0; partition < 4; partition++) {
                 final String key = "key-" + cnt;
                 final String value = "{" + "\"name\":\"user-" + cnt + "\"}";
@@ -185,6 +243,30 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
                 final String expectedLine = "{\"value\":" + value + ",\"key\":\"" + key + "\"}";
                 assertEquals(expectedLine, actualLine);
             }
+        }
+    }
+
+    private void waitForConnectToFinishProcessing() throws InterruptedException {
+        // TODO more robust way to detect that Connect finished processing
+        Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
+    }
+
+    private void produceRecords(final int recordCountPerPartition) throws ExecutionException, InterruptedException {
+        final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
+        int cnt = 0;
+        for (int i = 0; i < recordCountPerPartition; i++) {
+            for (int partition = 0; partition < 4; partition++) {
+                final String key = "key-" + cnt;
+                final GenericRecord value = new GenericData.Record(avroInputDataSchema);
+                value.put("name", "user-" + cnt);
+                cnt += 1;
+
+                sendFutures.add(sendMessageAsync(producer, TEST_TOPIC_0, partition, key, value));
+            }
+        }
+        producer.flush();
+        for (final Future<RecordMetadata> sendFuture : sendFutures) {
+            sendFuture.get();
         }
     }
 
@@ -235,9 +317,13 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
         return config;
     }
 
+    private String getAvroBlobName(final int partition, final int startOffset, final String compression) {
+        final String result = String.format("%s%s-%d-%020d.avro", s3Prefix, TEST_TOPIC_0, partition, startOffset);
+        return result  + CompressionType.forName(compression).extension();
+    }
+
     // WARN: different from GCS
     private String getBlobName(final int partition, final int startOffset, final String compression) {
-        //
         final String result = String.format("%s%s-%d-%020d", s3Prefix, TEST_TOPIC_0, partition, startOffset);
         return result + CompressionType.forName(compression).extension();
     }

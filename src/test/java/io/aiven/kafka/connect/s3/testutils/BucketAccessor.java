@@ -18,6 +18,7 @@ package io.aiven.kafka.connect.s3.testutils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -103,17 +104,31 @@ public class BucketAccessor {
             .collect(Collectors.toList());
     }
 
+    public final byte[] readBytes(final String blobName, final String compression) throws IOException {
+        Objects.requireNonNull(blobName, "blobName cannot be null");
+        final byte[] blobBytes = s3.getObject(bucketName, blobName).getObjectContent().readAllBytes();
+        try (final ByteArrayInputStream bais = new ByteArrayInputStream(blobBytes)) {
+            final InputStream decompressedStream = getDecompressedStream(bais, compression);
+            final ByteArrayOutputStream decompressedBytes = new ByteArrayOutputStream();
+            final byte[] readBuffer = new byte[1024];
+            int bytesRead = 0;
+            while ((bytesRead = decompressedStream.read(readBuffer)) != -1) {
+                decompressedBytes.write(readBuffer, 0, bytesRead);
+            }
+            return decompressedBytes.toByteArray();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public final byte[] readBytes(final String blobName) throws IOException {
-        return s3.getObject(bucketName, blobName).getObjectContent().readAllBytes();
+        return readBytes(blobName, "none");
     }
 
     public final List<String> readLines(final String blobName, final String compression) throws IOException {
-        Objects.requireNonNull(blobName, "blobName cannot be null");
-        final byte[] blobBytes = s3.getObject(bucketName, blobName).getObjectContent().readAllBytes();
-
+        final byte[] blobBytes = readBytes(blobName, compression);
         try (final ByteArrayInputStream bais = new ByteArrayInputStream(blobBytes)) {
-            final InputStream decompressedStream = getDecompressedStream(bais, compression);
-            final InputStreamReader reader = new InputStreamReader(decompressedStream, StandardCharsets.UTF_8);
+            final InputStreamReader reader = new InputStreamReader(bais, StandardCharsets.UTF_8);
             final BufferedReader bufferedReader = new BufferedReader(reader);
             return bufferedReader.lines().collect(Collectors.toList());
         } catch (final IOException e) {

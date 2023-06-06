@@ -34,6 +34,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 
 import io.aiven.kafka.connect.common.config.FilenameTemplateVariable;
+import io.aiven.kafka.connect.common.config.FormatType;
 import io.aiven.kafka.connect.common.grouper.RecordGrouper;
 import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.output.OutputWriter;
@@ -204,7 +205,9 @@ public class S3SinkTask extends SinkTask {
                     record, VariableTemplatePart.Parameter.of("padding", "true")
                 )
             );
-        return prefix + key + config.getCompressionType().extension();
+        // Keep this in line with io.aiven.kafka.connect.common.config.AivenCommonConfig#getFilename
+        final String formatSuffix = FormatType.AVRO.equals(config.getFormatType()) ? ".avro" : "";
+        return prefix + key + formatSuffix + config.getCompressionType().extension();
     }
 
 }
