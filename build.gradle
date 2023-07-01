@@ -129,7 +129,7 @@ dependencies {
     implementation "io.aiven:commons-for-apache-kafka-connect:$aivenConnectCommonsVersion"
 
     testImplementation "org.xerial.snappy:snappy-java:1.1.9.1"
-    testImplementation "com.github.luben:zstd-jni:1.5.5-3"
+    testImplementation "com.github.luben:zstd-jni:1.5.5-4"
 
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
     testImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
