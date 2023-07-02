@@ -60,10 +60,6 @@ compileJava {
     options.compilerArgs = ["-Xlint:all", "-Werror"]
 }
 
-javadoc {
-    options.addBooleanOption('html5', true)
-}
-
 jacoco {
     toolVersion = "0.8.7"
 }
@@ -256,6 +252,13 @@ jar {
         )
     }
 }
+
+javadoc {
+    options.addBooleanOption('html5', true)
+    // disable missing javadoc lint and show only warning and error messages
+    options.addStringOption('Xdoclint:all,-missing', '-quiet')
+}
+
 
 processResources {
     filesMatching('s3-connector-for-apache-kafka-version.properties') {
