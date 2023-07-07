@@ -151,6 +151,7 @@ dependencies {
     integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
+    integrationTestImplementation "org.testcontainers:localstack:$testcontainersVersion"
     integrationTestImplementation "com.github.tomakehurst:wiremock-jre8:$wireMockVersion"
 
     integrationTestImplementation("io.confluent:kafka-avro-serializer:$confluentPlatformVersion") {
