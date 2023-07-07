@@ -206,6 +206,7 @@ dependencies {
 
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
+    integrationTestImplementation "org.awaitility:awaitility:4.2.0"
 
     testImplementation 'org.assertj:assertj-core:3.24.2'
 }
@@ -221,7 +222,8 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
 
-    dependsOn test, distTar
+    dependsOn distTar
+    shouldRunAfter test
 
     useJUnitPlatform()
 

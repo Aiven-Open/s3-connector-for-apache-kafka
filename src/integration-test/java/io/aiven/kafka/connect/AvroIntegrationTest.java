@@ -30,7 +30,6 @@ import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -78,7 +77,6 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
     private static final String TEST_BUCKET_NAME = "test-bucket0";
 
     private static final String CONNECTOR_NAME = "aiven-s3-sink-connector";
-    private static final String TEST_TOPIC_0 = "test-topic-0";
     private static final String COMMON_PREFIX = "s3-connector-for-apache-kafka-test-";
     private static final int OFFSET_FLUSH_INTERVAL_MS = 5000;
 
@@ -88,9 +86,9 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
     private static File pluginDir;
 
     @Container
-    private final KafkaContainer kafka = createKafkaContainer();
+    private static final KafkaContainer KAFKA = KafkaIntegrationBase.createKafkaContainer();
     @Container
-    private final SchemaRegistryContainer schemaRegistry = new SchemaRegistryContainer(kafka);
+    private static final SchemaRegistryContainer SCHEMA_REGISTRY = new SchemaRegistryContainer(KAFKA);
     private AdminClient adminClient;
     private KafkaProducer<String, GenericRecord> producer;
     private ConnectRunner connectRunner;
@@ -110,17 +108,18 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
 
         pluginDir = KafkaIntegrationBase.getPluginDir();
         KafkaIntegrationBase.extractConnectorPlugin(pluginDir);
+
+        KafkaIntegrationBase.waitForRunningContainer(KAFKA);
     }
 
     @BeforeEach
     void setUp() throws ExecutionException, InterruptedException {
-        adminClient = newAdminClient(kafka);
-        producer = newProducer(kafka);
+        adminClient = newAdminClient(KAFKA);
+        producer = newProducer(KAFKA);
 
-        final NewTopic newTopic0 = new NewTopic(TEST_TOPIC_0, 4, (short) 1);
-        adminClient.createTopics(Arrays.asList(newTopic0)).all().get();
+        KafkaIntegrationBase.recreateTopics(adminClient);
 
-        connectRunner = newConnectRunner(kafka, pluginDir, OFFSET_FLUSH_INTERVAL_MS);
+        connectRunner = newConnectRunner(KAFKA, pluginDir, OFFSET_FLUSH_INTERVAL_MS);
         connectRunner.start();
     }
 
@@ -278,7 +277,7 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
             "io.confluent.kafka.serializers.KafkaAvroSerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
             "io.confluent.kafka.serializers.KafkaAvroSerializer");
-        producerProps.put("schema.registry.url", schemaRegistry.getSchemaRegistryUrl());
+        producerProps.put("schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         return new KafkaProducer<>(producerProps);
     }
 
@@ -296,9 +295,9 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
         final Map<String, String> config = new HashMap<>();
         config.put("name", connectorName);
         config.put("key.converter", "io.confluent.connect.avro.AvroConverter");
-        config.put("key.converter.schema.registry.url", schemaRegistry.getSchemaRegistryUrl());
+        config.put("key.converter.schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         config.put("value.converter", "io.confluent.connect.avro.AvroConverter");
-        config.put("value.converter.schema.registry.url", schemaRegistry.getSchemaRegistryUrl());
+        config.put("value.converter.schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         config.put("tasks.max", "1");
         return config;
     }
@@ -311,8 +310,8 @@ public class AvroIntegrationTest implements KafkaIntegrationBase {
         config.put("aws.s3.bucket.name", TEST_BUCKET_NAME);
         config.put("aws.s3.prefix", s3Prefix);
         config.put("topics", TEST_TOPIC_0);
-        config.put("key.converter.schema.registry.url", schemaRegistry.getSchemaRegistryUrl());
-        config.put("value.converter.schema.registry.url", schemaRegistry.getSchemaRegistryUrl());
+        config.put("key.converter.schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
+        config.put("value.converter.schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         config.put("tasks.max", "1");
         return config;
     }
