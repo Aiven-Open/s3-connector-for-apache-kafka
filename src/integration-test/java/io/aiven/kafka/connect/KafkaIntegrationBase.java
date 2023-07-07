@@ -19,18 +19,29 @@ package io.aiven.kafka.connect;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.common.errors.TopicExistsException;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 
 import com.github.dockerjava.api.model.Ulimit;
+import org.awaitility.Awaitility;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 
 
 public interface KafkaIntegrationBase {
+
+    String TEST_TOPIC_0 = "test-topic-0";
+
+    String TEST_TOPIC_1 = "test-topic-1";
 
     default AdminClient newAdminClient(final KafkaContainer kafka) {
         final Properties adminClientConfig = new Properties();
@@ -50,7 +61,7 @@ public interface KafkaIntegrationBase {
         assert distFile.exists();
 
         final String cmd = String.format("tar -xf %s --strip-components=1 -C %s",
-            distFile.toString(), pluginDir.toString());
+            distFile, pluginDir.toString());
         final Process p = Runtime.getRuntime().exec(cmd);
         assert p.waitFor() == 0;
     }
@@ -63,7 +74,7 @@ public interface KafkaIntegrationBase {
         return pluginDir;
     }
 
-    default KafkaContainer createKafkaContainer() {
+    static KafkaContainer createKafkaContainer() {
         return new KafkaContainer("5.2.1")
             .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false")
             .withNetwork(Network.newNetwork())
@@ -71,5 +82,37 @@ public interface KafkaIntegrationBase {
             .withCreateContainerCmdModifier(cmd ->
                 cmd.getHostConfig().withUlimits(List.of(new Ulimit("nofile", 30000L, 30000L)))
             );
+    }
+
+    static void recreateTopics(final AdminClient adminClient) throws InterruptedException, ExecutionException {
+        final var topics = List.of(TEST_TOPIC_0, TEST_TOPIC_1);
+        // to reuse the same container
+        try {
+            adminClient.deleteTopics(topics).all().get();
+        } catch (final ExecutionException e) {
+            if (!(e.getCause() instanceof UnknownTopicOrPartitionException)) { // else first exec
+                throw e;
+            }
+        }
+        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> adminClient.listTopics().names().get()
+            .stream()
+            .noneMatch(topics::contains));
+        final NewTopic newTopic0 = new NewTopic(TEST_TOPIC_0, 4, (short) 1);
+        final NewTopic newTopic1 = new NewTopic(TEST_TOPIC_1, 4, (short) 1);
+        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> {
+            try {
+                adminClient.createTopics(List.of(newTopic0, newTopic1)).all().get();
+                return true;
+            } catch (final ExecutionException e) {
+                if (!(e.getCause() instanceof TopicExistsException)) { // else first exec
+                    e.printStackTrace();
+                }
+            }
+            return false;
+        });
+    }
+
+    static void waitForRunningContainer(final Container kafka) {
+        Awaitility.await().atMost(Duration.ofMinutes(1)).until(kafka::isRunning);
     }
 }

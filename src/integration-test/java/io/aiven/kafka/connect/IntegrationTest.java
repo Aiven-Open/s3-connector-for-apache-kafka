@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 
 
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -83,8 +82,6 @@ final class IntegrationTest implements KafkaIntegrationBase {
     private static final String TEST_BUCKET_NAME = "test-bucket0";
 
     private static final String CONNECTOR_NAME = "aiven-s3-sink-connector";
-    private static final String TEST_TOPIC_0 = "test-topic-0";
-    private static final String TEST_TOPIC_1 = "test-topic-1";
     private static final String COMMON_PREFIX = "s3-connector-for-apache-kafka-test-";
     private static final int OFFSET_FLUSH_INTERVAL_MS = 5000;
 
@@ -94,7 +91,7 @@ final class IntegrationTest implements KafkaIntegrationBase {
     private static File pluginDir;
 
     @Container
-    private final KafkaContainer kafka = createKafkaContainer();
+    private static final KafkaContainer KAFKA = KafkaIntegrationBase.createKafkaContainer();
     private AdminClient adminClient;
     private KafkaProducer<byte[], byte[]> producer;
     private ConnectRunner connectRunner;
@@ -110,20 +107,20 @@ final class IntegrationTest implements KafkaIntegrationBase {
 
         pluginDir = KafkaIntegrationBase.getPluginDir();
         KafkaIntegrationBase.extractConnectorPlugin(pluginDir);
+
+        KafkaIntegrationBase.waitForRunningContainer(KAFKA);
     }
 
     @BeforeEach
     void setUp() throws ExecutionException, InterruptedException {
         testBucketAccessor.createBucket();
 
-        adminClient = newAdminClient(kafka);
-        producer = newProducer(kafka);
+        adminClient = newAdminClient(KAFKA);
+        producer = newProducer(KAFKA);
 
-        final NewTopic newTopic0 = new NewTopic(TEST_TOPIC_0, 4, (short) 1);
-        final NewTopic newTopic1 = new NewTopic(TEST_TOPIC_1, 4, (short) 1);
-        adminClient.createTopics(Arrays.asList(newTopic0, newTopic1)).all().get();
+        KafkaIntegrationBase.recreateTopics(adminClient);
 
-        connectRunner = newConnectRunner(kafka, pluginDir, OFFSET_FLUSH_INTERVAL_MS);
+        connectRunner = newConnectRunner(KAFKA, pluginDir, OFFSET_FLUSH_INTERVAL_MS);
         connectRunner.start();
     }
 
