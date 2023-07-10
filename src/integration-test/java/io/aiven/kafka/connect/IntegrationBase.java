@@ -23,25 +23,50 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.common.errors.TopicExistsException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.github.dockerjava.api.model.Ulimit;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.TestInfo;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
 
+public interface IntegrationBase {
 
-public interface KafkaIntegrationBase {
+    static LocalStackContainer createS3Container() {
+        return new LocalStackContainer(
+            DockerImageName.parse("localstack/localstack:2.0.2")
+        ).withServices(LocalStackContainer.Service.S3);
+    }
 
-    String TEST_TOPIC_0 = "test-topic-0";
-
-    String TEST_TOPIC_1 = "test-topic-1";
+    static AmazonS3 createS3Client(final LocalStackContainer localStackContainer) {
+        return AmazonS3ClientBuilder
+            .standard()
+            .withEndpointConfiguration(
+                new AwsClientBuilder.EndpointConfiguration(
+                    localStackContainer.getEndpointOverride(LocalStackContainer.Service.S3).toString(),
+                    localStackContainer.getRegion()
+                )
+            )
+            .withCredentials(
+                new AWSStaticCredentialsProvider(
+                    new BasicAWSCredentials(localStackContainer.getAccessKey(), localStackContainer.getSecretKey())
+                )
+            )
+            .build();
+    }
 
     default AdminClient newAdminClient(final KafkaContainer kafka) {
         final Properties adminClientConfig = new Properties();
@@ -50,8 +75,8 @@ public interface KafkaIntegrationBase {
     }
 
     default ConnectRunner newConnectRunner(final KafkaContainer kafka,
-                                                  final File pluginDir,
-                                                  final int offsetFlushIntervalMs) {
+                                           final File pluginDir,
+                                           final int offsetFlushIntervalMs) {
         return new ConnectRunner(pluginDir, kafka.getBootstrapServers(), offsetFlushIntervalMs);
     }
 
@@ -84,35 +109,19 @@ public interface KafkaIntegrationBase {
             );
     }
 
-    static void recreateTopics(final AdminClient adminClient) throws InterruptedException, ExecutionException {
-        final var topics = List.of(TEST_TOPIC_0, TEST_TOPIC_1);
-        // to reuse the same container
-        try {
-            adminClient.deleteTopics(topics).all().get();
-        } catch (final ExecutionException e) {
-            if (!(e.getCause() instanceof UnknownTopicOrPartitionException)) { // else first exec
-                throw e;
-            }
-        }
-        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> adminClient.listTopics().names().get()
-            .stream()
-            .noneMatch(topics::contains));
-        final NewTopic newTopic0 = new NewTopic(TEST_TOPIC_0, 4, (short) 1);
-        final NewTopic newTopic1 = new NewTopic(TEST_TOPIC_1, 4, (short) 1);
-        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> {
-            try {
-                adminClient.createTopics(List.of(newTopic0, newTopic1)).all().get();
-                return true;
-            } catch (final ExecutionException e) {
-                if (!(e.getCause() instanceof TopicExistsException)) { // else first exec
-                    e.printStackTrace();
-                }
-            }
-            return false;
-        });
+    static String topicName(final TestInfo testInfo) {
+        return testInfo.getTestMethod().get().getName() + "-" + testInfo.getDisplayName().hashCode();
     }
 
-    static void waitForRunningContainer(final Container kafka) {
+    static void createTopics(final AdminClient adminClient, final List<String> topicNames)
+        throws ExecutionException, InterruptedException {
+        final var newTopics = topicNames.stream()
+            .map(s -> new NewTopic(s, 4, (short) 1))
+            .collect(Collectors.toList());
+        adminClient.createTopics(newTopics).all().get();
+    }
+
+    static void waitForRunningContainer(final Container<?> kafka) {
         Awaitility.await().atMost(Duration.ofMinutes(1)).until(kafka::isRunning);
     }
 }

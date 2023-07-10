@@ -20,8 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,22 +39,18 @@ import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector;
 import io.aiven.kafka.connect.s3.testutils.BucketAccessor;
 
-import cloud.localstack.Localstack;
-import cloud.localstack.ServiceName;
-import cloud.localstack.awssdkv1.TestUtils;
-import cloud.localstack.docker.LocalstackDockerExtension;
-import cloud.localstack.docker.annotation.LocalstackDockerProperties;
 import com.amazonaws.services.s3.AmazonS3;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -66,10 +60,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(LocalstackDockerExtension.class)
-@LocalstackDockerProperties(services = {ServiceName.S3})
 @Testcontainers
-final class ParquetIntegrationTest implements KafkaIntegrationBase {
+final class ParquetIntegrationTest implements IntegrationBase {
 
     private static final String S3_ACCESS_KEY_ID = "test-key-id0";
 
@@ -79,19 +71,18 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
     private static final String CONNECTOR_NAME = "aiven-s3-sink-connector";
 
-    private static final String COMMON_PREFIX = "s3-connector-for-apache-kafka-test-";
-
     private static final int OFFSET_FLUSH_INTERVAL_MS = 5000;
 
     private static String s3Endpoint;
-    private static String s3Prefix;
     private static BucketAccessor testBucketAccessor;
     private static File pluginDir;
     @TempDir
     Path tmpDir;
 
     @Container
-    private static final KafkaContainer KAFKA = KafkaIntegrationBase.createKafkaContainer();
+    public static final LocalStackContainer LOCALSTACK = IntegrationBase.createS3Container();
+    @Container
+    private static final KafkaContainer KAFKA = IntegrationBase.createKafkaContainer();
 
     private AdminClient adminClient;
     private KafkaProducer<byte[], byte[]> producer;
@@ -99,27 +90,25 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
     @BeforeAll
     static void setUpAll() throws IOException, InterruptedException {
-        s3Prefix = COMMON_PREFIX
-                + ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "/";
-
-        final AmazonS3 s3 = TestUtils.getClientS3();
-        s3Endpoint = Localstack.INSTANCE.getEndpointS3();
+        final AmazonS3 s3 = IntegrationBase.createS3Client(LOCALSTACK);
+        s3Endpoint = LOCALSTACK.getEndpoint().toString();
         testBucketAccessor = new BucketAccessor(s3, TEST_BUCKET_NAME);
 
-        pluginDir = KafkaIntegrationBase.getPluginDir();
-        KafkaIntegrationBase.extractConnectorPlugin(pluginDir);
+        pluginDir = IntegrationBase.getPluginDir();
+        IntegrationBase.extractConnectorPlugin(pluginDir);
 
-        KafkaIntegrationBase.waitForRunningContainer(KAFKA);
+        IntegrationBase.waitForRunningContainer(KAFKA);
     }
 
     @BeforeEach
-    void setUp() throws ExecutionException, InterruptedException {
+    void setUp(final TestInfo testInfo) throws ExecutionException, InterruptedException {
         testBucketAccessor.createBucket();
 
         adminClient = newAdminClient(KAFKA);
-        producer = newProducer(KAFKA);
+        producer = newProducer();
 
-        KafkaIntegrationBase.recreateTopics(adminClient);
+        final var topicName = IntegrationBase.topicName(testInfo);
+        IntegrationBase.createTopics(adminClient, List.of(topicName));
 
         connectRunner = newConnectRunner(KAFKA, pluginDir, OFFSET_FLUSH_INTERVAL_MS);
         connectRunner.start();
@@ -136,9 +125,9 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
         connectRunner.awaitStop();
     }
 
-    private KafkaProducer<byte[], byte[]> newProducer(final KafkaContainer kafka) {
+    private KafkaProducer<byte[], byte[]> newProducer() {
         final Map<String, Object> producerProps = new HashMap<>();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArraySerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
@@ -147,10 +136,11 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     @Test
-    void allOutputFields()
-            throws ExecutionException, InterruptedException, IOException {
+    void allOutputFields(final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final var compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "key,value,offset,timestamp,headers");
         connectorConfig.put("format.output.fields.value.encoding", "none");
         connectorConfig.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
@@ -164,7 +154,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
                 final String key = "key-" + cnt;
                 final String value = "value-" + cnt;
                 cnt += 1;
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
             }
         }
         producer.flush();
@@ -178,10 +168,10 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
         final var blobContents = new HashMap<String, List<GenericRecord>>();
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(0, 0, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(3, 0, compression));
+                getBlobName(topicName, 0, 0, compression),
+                getBlobName(topicName, 1, 0, compression),
+                getBlobName(topicName, 2, 0, compression),
+                getBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
             assertTrue(testBucketAccessor.doesObjectExist(blobName));
             final var records =
@@ -197,7 +187,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
             for (int partition = 0; partition < 4; partition++) {
                 final var key = "key-" + cnt;
                 final var value = "value-" + cnt;
-                final String blobName = getBlobName(partition, 0, compression);
+                final String blobName = getBlobName(topicName, partition, 0, compression);
                 final var record = blobContents.get(blobName).get(i);
                 assertEquals(key, record.get("key").toString());
                 assertEquals(value, record.get("value").toString());
@@ -210,10 +200,11 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     @Test
-    void allOutputFieldsJsonValueAsString()
-            throws ExecutionException, InterruptedException, IOException {
+    void allOutputFieldsJsonValueAsString(final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final var compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "key,value,offset,timestamp,headers");
         connectorConfig.put("format.output.fields.value.encoding", "none");
         connectorConfig.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
@@ -227,7 +218,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
                 final String key = "key-" + cnt;
                 final String value = "{\"name\": \"name-" + cnt + "\", \"value\": \"value-" + cnt + "\"}";
                 cnt += 1;
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
             }
         }
         producer.flush();
@@ -240,10 +231,10 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
         final var blobContents = new HashMap<String, List<GenericRecord>>();
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(0, 0, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(3, 0, compression));
+                getBlobName(topicName, 0, 0, compression),
+                getBlobName(topicName, 1, 0, compression),
+                getBlobName(topicName, 2, 0, compression),
+                getBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
             assertTrue(testBucketAccessor.doesObjectExist(blobName));
             final var records =
@@ -259,7 +250,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
             for (int partition = 0; partition < 4; partition++) {
                 final var key = "key-" + cnt;
                 final var value = "{\"name\": \"name-" + cnt + "\", \"value\": \"value-" + cnt + "\"}";
-                final String blobName = getBlobName(partition, 0, compression);
+                final String blobName = getBlobName(topicName, partition, 0, compression);
                 final var record = blobContents.get(blobName).get(i);
                 assertEquals(key, record.get("key").toString());
                 assertEquals(value, record.get("value").toString());
@@ -273,10 +264,11 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
     @ParameterizedTest
     @CsvSource({"true, {\"value\": {\"name\": \"%s\"}} ", "false, {\"name\": \"%s\"}"})
-    void jsonValue(final String envelopeEnabled, final String expectedOutput)
-            throws ExecutionException, InterruptedException, IOException {
+    void jsonValue(final String envelopeEnabled, final String expectedOutput, final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final var compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "value");
         connectorConfig.put("format.output.envelope", envelopeEnabled);
         connectorConfig.put("format.output.fields.value.encoding", "none");
@@ -299,7 +291,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
                         );
                 cnt += 1;
 
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
             }
         }
         producer.flush();
@@ -312,10 +304,10 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
 
         final var blobContents = new HashMap<String, List<GenericRecord>>();
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(0, 0, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(3, 0, compression));
+                getBlobName(topicName, 0, 0, compression),
+                getBlobName(topicName, 1, 0, compression),
+                getBlobName(topicName, 2, 0, compression),
+                getBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
             assertTrue(testBucketAccessor.doesObjectExist(blobName));
             final var records =
@@ -330,7 +322,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
         for (int i = 0; i < 10; i++) {
             for (int partition = 0; partition < 4; partition++) {
                 final var name = "user-" + cnt;
-                final String blobName = getBlobName(partition, 0, compression);
+                final String blobName = getBlobName(topicName, partition, 0, compression);
                 final var record = blobContents.get(blobName).get(i);
                 final String expectedLine = String.format(expectedOutput, name);
                 assertEquals(expectedLine, record.toString());
@@ -340,10 +332,11 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     @Test
-    void schemaChanged()
-            throws ExecutionException, InterruptedException, IOException {
+    void schemaChanged(final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final var compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "value");
         connectorConfig.put("format.output.fields.value.encoding", "none");
         connectorConfig.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
@@ -372,7 +365,7 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
                     value = String.format(jsonMessagePattern, jsonMessageNewSchema, payload);
                 }
                 expectedRecords.add(payload);
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
                 cnt += 1;
             }
         }
@@ -385,14 +378,14 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
         Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
 
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(0, 0, compression),
-                getBlobName(0, 5, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(1, 5, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(2, 5, compression),
-                getBlobName(3, 0, compression),
-                getBlobName(3, 5, compression)
+                getBlobName(topicName, 0, 0, compression),
+                getBlobName(topicName, 0, 5, compression),
+                getBlobName(topicName, 1, 0, compression),
+                getBlobName(topicName, 1, 5, compression),
+                getBlobName(topicName, 2, 0, compression),
+                getBlobName(topicName, 2, 5, compression),
+                getBlobName(topicName, 3, 0, compression),
+                getBlobName(topicName, 3, 5, compression)
         );
         final var blobContents = new ArrayList<String>();
         for (final String blobName : expectedBlobs) {
@@ -400,23 +393,27 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
             final var records =
                     ParquetUtils.readRecords(
                             tmpDir.resolve(Paths.get(blobName)),
-                            testBucketAccessor.readBytes(blobName)
+                        testBucketAccessor.readBytes(blobName)
                     );
             blobContents.addAll(records.stream().map(r -> r.get("value").toString()).collect(Collectors.toList()));
         }
         assertIterableEquals(
-                expectedRecords.stream().sorted().collect(Collectors.toList()),
-                blobContents.stream().sorted().collect(Collectors.toList())
+            expectedRecords.stream().sorted().collect(Collectors.toList()),
+            blobContents.stream().sorted().collect(Collectors.toList())
         );
     }
 
-    private Map<String, String> awsSpecificConfig(final Map<String, String> config) {
+    private Map<String, String> awsSpecificConfig(final Map<String, String> config, final String topicName) {
+        return awsSpecificConfig(config, List.of(topicName));
+    }
+
+    private Map<String, String> awsSpecificConfig(final Map<String, String> config, final List<String> topicNames) {
         config.put("connector.class", AivenKafkaConnectS3SinkConnector.class.getName());
         config.put("aws.access.key.id", S3_ACCESS_KEY_ID);
         config.put("aws.secret.access.key", S3_SECRET_ACCESS_KEY);
         config.put("aws.s3.endpoint", s3Endpoint);
         config.put("aws.s3.bucket.name", TEST_BUCKET_NAME);
-        config.put("topics", TEST_TOPIC_0 + "," + TEST_TOPIC_1);
+        config.put("topics", String.join(",", topicNames));
         return config;
     }
 
@@ -436,14 +433,15 @@ final class ParquetIntegrationTest implements KafkaIntegrationBase {
                                                     final String key,
                                                     final String value) {
         final ProducerRecord<byte[], byte[]> msg = new ProducerRecord<>(
-                topicName, partition,
-                key == null ? null : key.getBytes(),
-                value == null ? null : value.getBytes());
+            topicName, partition,
+            key == null ? null : key.getBytes(),
+            value == null ? null : value.getBytes());
         return producer.send(msg);
     }
 
-    private String getBlobName(final int partition, final int startOffset, final String compression) {
-        final String result = String.format("%s-%d-%d", TEST_TOPIC_0, partition, startOffset);
+    private String getBlobName(final String topicName, final int partition, final int startOffset,
+                               final String compression) {
+        final String result = String.format("%s-%d-%d", topicName, partition, startOffset);
         return result + CompressionType.forName(compression).extension();
     }
 

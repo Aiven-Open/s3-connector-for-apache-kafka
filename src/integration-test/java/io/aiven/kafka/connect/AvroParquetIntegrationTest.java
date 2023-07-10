@@ -42,10 +42,6 @@ import io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector;
 import io.aiven.kafka.connect.s3.SchemaRegistryContainer;
 import io.aiven.kafka.connect.s3.testutils.BucketAccessor;
 
-import cloud.localstack.Localstack;
-import cloud.localstack.awssdkv1.TestUtils;
-import cloud.localstack.docker.LocalstackDockerExtension;
-import cloud.localstack.docker.annotation.LocalstackDockerProperties;
 import com.amazonaws.services.s3.AmazonS3;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -55,9 +51,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -67,10 +64,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(LocalstackDockerExtension.class)
-@LocalstackDockerProperties(services = {"s3"})
 @Testcontainers
-class AvroParquetIntegrationTest implements KafkaIntegrationBase {
+class AvroParquetIntegrationTest implements IntegrationBase {
     private static final String S3_ACCESS_KEY_ID = "test-key-id0";
     private static final String S3_SECRET_ACCESS_KEY = "test_secret_key0";
     private static final String TEST_BUCKET_NAME = "test-bucket0";
@@ -85,7 +80,9 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     private static File pluginDir;
 
     @Container
-    private static final KafkaContainer KAFKA = KafkaIntegrationBase.createKafkaContainer();
+    public static final LocalStackContainer LOCALSTACK = IntegrationBase.createS3Container();
+    @Container
+    private static final KafkaContainer KAFKA = IntegrationBase.createKafkaContainer();
     @Container
     private static final SchemaRegistryContainer SCHEMA_REGISTRY = new SchemaRegistryContainer(KAFKA);
     private AdminClient adminClient;
@@ -95,25 +92,26 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     @BeforeAll
     static void setUpAll() throws IOException, InterruptedException {
         s3Prefix = COMMON_PREFIX
-                + ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "/";
+            + ZonedDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "/";
 
-        final AmazonS3 s3 = TestUtils.getClientS3();
-        s3Endpoint = Localstack.INSTANCE.getEndpointS3();
+        final AmazonS3 s3 = IntegrationBase.createS3Client(LOCALSTACK);
+        s3Endpoint = LOCALSTACK.getEndpoint().toString();
         testBucketAccessor = new BucketAccessor(s3, TEST_BUCKET_NAME);
         testBucketAccessor.createBucket();
 
-        pluginDir = KafkaIntegrationBase.getPluginDir();
-        KafkaIntegrationBase.extractConnectorPlugin(pluginDir);
+        pluginDir = IntegrationBase.getPluginDir();
+        IntegrationBase.extractConnectorPlugin(pluginDir);
 
-        KafkaIntegrationBase.waitForRunningContainer(KAFKA);
+        IntegrationBase.waitForRunningContainer(KAFKA);
     }
 
     @BeforeEach
-    void setUp() throws ExecutionException, InterruptedException {
+    void setUp(final TestInfo testInfo) throws ExecutionException, InterruptedException {
         adminClient = newAdminClient(KAFKA);
-        producer = newProducer(KAFKA);
+        producer = newProducer();
 
-        KafkaIntegrationBase.recreateTopics(adminClient);
+        final var topicName = IntegrationBase.topicName(testInfo);
+        IntegrationBase.createTopics(adminClient, List.of(topicName));
 
         connectRunner = newConnectRunner(KAFKA, pluginDir, OFFSET_FLUSH_INTERVAL_MS);
         connectRunner.start();
@@ -129,16 +127,17 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     @Test
-    final void allOutputFields(@TempDir final Path tmpDir)
-            throws ExecutionException, InterruptedException, IOException {
+    final void allOutputFields(@TempDir final Path tmpDir, final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final String compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "key,value,offset,timestamp,headers");
         connectorConfig.put("format.output.fields.value.encoding", "none");
         connectRunner.createConnector(connectorConfig);
 
         final Schema valueSchema =
-                SchemaBuilder.record("value")
+            SchemaBuilder.record("value")
                         .fields()
                         .name("name").type().stringType().noDefault()
                         .name("value").type().stringType().noDefault()
@@ -153,7 +152,7 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
                 value.put("name", "user-" + cnt);
                 value.put("value", "value-" + cnt);
                 cnt += 1;
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
             }
         }
         producer.flush();
@@ -165,10 +164,10 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
         Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
 
         final List<String> expectedBlobs = List.of(
-                getBlobName(0, 0, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(3, 0, compression));
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 3, 0, compression));
         final Map<String, List<GenericRecord>> blobContents = new HashMap<>();
         for (final String blobName : expectedBlobs) {
             assertTrue(testBucketAccessor.doesObjectExist(blobName));
@@ -185,7 +184,7 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
             for (int partition = 0; partition < 4; partition++) {
                 final var name = "user-" + cnt;
                 final var value = "value-" + cnt;
-                final String blobName = getBlobName(partition, 0, "none");
+                final String blobName = getBlobName(topicName, partition, 0, "none");
                 final GenericRecord record = blobContents.get(blobName).get(i);
                 final var expectedKey = "key-" + cnt;
                 final var expectedValue = "{\"name\": \"" + name + "\", \"value\": \"" + value + "\"}";
@@ -200,16 +199,17 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     @Test
-    final void valueComplexType(@TempDir final Path tmpDir)
-            throws ExecutionException, InterruptedException, IOException {
+    final void valueComplexType(@TempDir final Path tmpDir, final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final String compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "value");
         connectorConfig.put("format.output.fields.value.encoding", "none");
         connectRunner.createConnector(connectorConfig);
 
         final Schema valueSchema =
-                SchemaBuilder.record("value")
+            SchemaBuilder.record("value")
                         .fields()
                         .name("name").type().stringType().noDefault()
                         .name("value").type().stringType().noDefault()
@@ -224,7 +224,7 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
                 value.put("name", "user-" + cnt);
                 value.put("value", "value-" + cnt);
                 cnt += 1;
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
             }
         }
         producer.flush();
@@ -236,10 +236,10 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
         Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
 
         final List<String> expectedBlobs = List.of(
-                getBlobName(0, 0, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(3, 0, compression));
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 3, 0, compression));
         final Map<String, List<GenericRecord>> blobContents = new HashMap<>();
         for (final String blobName : expectedBlobs) {
             final var records =
@@ -254,7 +254,7 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
             for (int partition = 0; partition < 4; partition++) {
                 final var name = "user-" + cnt;
                 final var value = "value-" + cnt;
-                final String blobName = getBlobName(partition, 0, "none");
+                final String blobName = getBlobName(topicName, partition, 0, "none");
                 final var record = blobContents.get(blobName).get(i);
                 final var avroRecord = (GenericRecord) record.get("value");
                 assertEquals(name, avroRecord.get("name").toString());
@@ -265,16 +265,17 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     @Test
-    final void schemaChanged(@TempDir final Path tmpDir)
-            throws ExecutionException, InterruptedException, IOException {
+    final void schemaChanged(@TempDir final Path tmpDir, final TestInfo testInfo)
+        throws ExecutionException, InterruptedException, IOException {
+        final var topicName = IntegrationBase.topicName(testInfo);
         final String compression = "none";
-        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression));
+        final Map<String, String> connectorConfig = awsSpecificConfig(basicConnectorConfig(compression), topicName);
         connectorConfig.put("format.output.fields", "value");
         connectorConfig.put("format.output.fields.value.encoding", "none");
         connectRunner.createConnector(connectorConfig);
 
         final Schema valueSchema =
-                SchemaBuilder.record("value")
+            SchemaBuilder.record("value")
                         .fields()
                         .name("name").type().stringType().noDefault()
                         .name("value").type().stringType().noDefault()
@@ -307,7 +308,7 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
                 }
                 expectedRecords.add(value.toString());
                 cnt += 1;
-                sendFutures.add(sendMessageAsync(TEST_TOPIC_0, partition, key, value));
+                sendFutures.add(sendMessageAsync(topicName, partition, key, value));
             }
         }
         producer.flush();
@@ -319,14 +320,14 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
         Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
 
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(0, 0, compression),
-                getBlobName(0, 5, compression),
-                getBlobName(1, 0, compression),
-                getBlobName(1, 5, compression),
-                getBlobName(2, 0, compression),
-                getBlobName(2, 5, compression),
-                getBlobName(3, 0, compression),
-                getBlobName(3, 5, compression)
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 0, 5, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 1, 5, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 2, 5, compression),
+            getBlobName(topicName, 3, 0, compression),
+            getBlobName(topicName, 3, 5, compression)
         );
         final var blobContents = new ArrayList<String>();
         for (final String blobName : expectedBlobs) {
@@ -343,14 +344,13 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
         );
     }
 
-    private KafkaProducer<String, GenericRecord> newProducer(final KafkaContainer kafka) {
-
+    private KafkaProducer<String, GenericRecord> newProducer() {
         final Map<String, Object> producerProps = new HashMap<>();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                "io.confluent.kafka.serializers.KafkaAvroSerializer");
+            "io.confluent.kafka.serializers.KafkaAvroSerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                "io.confluent.kafka.serializers.KafkaAvroSerializer");
+            "io.confluent.kafka.serializers.KafkaAvroSerializer");
         producerProps.put("schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         return new KafkaProducer<>(producerProps);
     }
@@ -377,14 +377,14 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
         return config;
     }
 
-    private Map<String, String> awsSpecificConfig(final Map<String, String> config) {
+    private Map<String, String> awsSpecificConfig(final Map<String, String> config, final String topicName) {
         config.put("connector.class", AivenKafkaConnectS3SinkConnector.class.getName());
         config.put("aws.access.key.id", S3_ACCESS_KEY_ID);
         config.put("aws.secret.access.key", S3_SECRET_ACCESS_KEY);
         config.put("aws.s3.endpoint", s3Endpoint);
         config.put("aws.s3.bucket.name", TEST_BUCKET_NAME);
         config.put("aws.s3.prefix", s3Prefix);
-        config.put("topics", TEST_TOPIC_0);
+        config.put("topics", topicName);
         config.put("key.converter.schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         config.put("value.converter.schema.registry.url", SCHEMA_REGISTRY.getSchemaRegistryUrl());
         config.put("tasks.max", "1");
@@ -392,8 +392,9 @@ class AvroParquetIntegrationTest implements KafkaIntegrationBase {
     }
 
     // WARN: different from GCS
-    private String getBlobName(final int partition, final int startOffset, final String compression) {
-        final String result = String.format("%s%s-%d-%020d", s3Prefix, TEST_TOPIC_0, partition, startOffset);
+    private String getBlobName(final String topicName, final int partition, final int startOffset,
+                               final String compression) {
+        final String result = String.format("%s%s-%d-%020d", s3Prefix, topicName, partition, startOffset);
         return result + CompressionType.forName(compression).extension();
     }
 
