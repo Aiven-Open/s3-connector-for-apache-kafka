@@ -82,10 +82,13 @@ ext {
     // Compatible with Kafka version:
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
+    // Align with version used by commons
+    avroConverterVersion = "7.2.2"
+    aivenConnectCommonsVersion = "0.10.1"
+
     amazonS3Version = "1.12.500"
     amazonSTSVersion = "1.12.479"
     slf4jVersion = "1.7.36"
-    aivenConnectCommonsVersion = "0.10.0"
     junitVersion = "5.9.3"
     testcontainersVersion = "1.18.3"
     localstackVersion = "0.2.23"
@@ -153,10 +156,8 @@ dependencies {
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
     integrationTestImplementation "com.github.tomakehurst:wiremock-jre8:$wireMockVersion"
 
-    integrationTestImplementation("io.confluent:kafka-avro-serializer:$confluentPlatformVersion") {
-        exclude group: "org.apache.kafka", module: "kafka-clients"
-    }
-    integrationTestImplementation("io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion") {
+    // TODO: add avro-converter to ConnectRunner via plugin.path instead of on worker classpath
+    integrationTestImplementation("io.confluent:kafka-connect-avro-converter:$avroConverterVersion") {
         exclude group: "org.apache.kafka", module: "kafka-clients"
     }
 
