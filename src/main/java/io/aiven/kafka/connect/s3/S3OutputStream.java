@@ -29,6 +29,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
 import org.slf4j.Logger;
@@ -46,6 +47,8 @@ public class S3OutputStream extends OutputStream {
 
     private final String bucketName;
 
+    private final String serverSideEncryptionAlgorithm;
+
     private final String key;
 
     private MultipartUpload multipartUpload;
@@ -57,10 +60,12 @@ public class S3OutputStream extends OutputStream {
     public S3OutputStream(final String bucketName,
                           final String key,
                           final int partSize,
-                          final AmazonS3 client) {
+                          final AmazonS3 client,
+                          final String serverSideEncryptionAlgorithm) {
         this.bucketName = bucketName;
         this.key = key;
         this.client = client;
+        this.serverSideEncryptionAlgorithm = serverSideEncryptionAlgorithm;
         this.partSize = partSize;
         this.byteBuffer = ByteBuffer.allocate(partSize);
     }
@@ -90,9 +95,26 @@ public class S3OutputStream extends OutputStream {
         }
     }
 
+    public S3OutputStream(final String bucketName,
+                          final String key,
+                          final int partSize,
+                          final AmazonS3 client) {
+        this(bucketName, key, partSize, client, null);
+    }
+
     private MultipartUpload newMultipartUpload() throws IOException {
         logger.debug("Create new multipart upload request");
-        final var initialRequest = new InitiateMultipartUploadRequest(bucketName, key);
+
+        final InitiateMultipartUploadRequest initialRequest;
+
+        if (this.serverSideEncryptionAlgorithm != null) {
+            final ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setSSEAlgorithm(serverSideEncryptionAlgorithm);
+            initialRequest = new InitiateMultipartUploadRequest(bucketName, key, metadata);
+        } else {
+            initialRequest = new InitiateMultipartUploadRequest(bucketName, key);
+        }
+
         final var initiateResult = client.initiateMultipartUpload(initialRequest);
         logger.debug("Upload ID: {}", initiateResult.getUploadId());
         return new MultipartUpload(initiateResult.getUploadId());
