@@ -49,6 +49,7 @@ import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.s3.S3OutputStream;
 
 import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.internal.BucketNameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -218,7 +219,7 @@ public class S3SinkConfig extends AivenCommonConfig {
             AWS_S3_BUCKET_NAME_CONFIG,
             Type.STRING,
             null,
-            new ConfigDef.NonEmptyString(),
+            new BucketNameValidator(),
             Importance.MEDIUM,
             "AWS S3 Bucket name",
             GROUP_AWS,
@@ -293,6 +294,19 @@ public class S3SinkConfig extends AivenCommonConfig {
                 AWS_S3_PART_SIZE
         );
 
+    }
+
+    private static class BucketNameValidator implements ConfigDef.Validator {
+        @Override
+        public void ensureValid(final String name, final Object value) {
+            try {
+                if (value != null) {
+                    BucketNameUtils.validateBucketName((String) value);
+                }
+            } catch (final IllegalArgumentException e) {
+                throw new ConfigException("Illegal bucket name: " + e.getMessage());
+            }
+        }
     }
 
     private static void addS3RetryPolicies(final ConfigDef configDef) {
@@ -583,7 +597,7 @@ public class S3SinkConfig extends AivenCommonConfig {
             AWS_S3_BUCKET,
             Type.STRING,
             null,
-            new ConfigDef.NonEmptyString() {
+            new BucketNameValidator() {
                 @Override
                 public void ensureValid(final String name, final Object o) {
                     LOGGER.info(AWS_S3_BUCKET

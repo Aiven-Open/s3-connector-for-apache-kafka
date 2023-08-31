@@ -39,6 +39,7 @@ public class AwsCredentialProviderFactoryTest {
         factory = new AwsCredentialProviderFactory();
         props = new HashMap<>();
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "anyBucket");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any-bucket");
     }
 
     @Test
