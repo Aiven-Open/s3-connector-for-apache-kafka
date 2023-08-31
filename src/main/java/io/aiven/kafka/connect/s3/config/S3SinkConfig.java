@@ -45,7 +45,6 @@ import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
 import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
 import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
 import io.aiven.kafka.connect.common.config.validators.UrlValidator;
-import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.s3.S3OutputStream;
 
@@ -726,15 +725,6 @@ public class S3SinkConfig extends AivenCommonConfig {
             );
         }
 
-        // Special checks for {{key}} filename template.
-        final Template filenameTemplate = getFilenameTemplate();
-        if (RecordGrouperFactory.KEY_RECORD.equals(RecordGrouperFactory.resolveRecordGrouperType(filenameTemplate))) {
-            if (getMaxRecordsPerFile() > 1) {
-                final String msg = String.format("When %s is %s, %s must be either 1 or not set",
-                    FILE_NAME_TEMPLATE_CONFIG, filenameTemplate, FILE_MAX_RECORDS);
-                throw new ConfigException(msg);
-            }
-        }
     }
 
     public AwsAccessSecret getOldAwsCredentials() {

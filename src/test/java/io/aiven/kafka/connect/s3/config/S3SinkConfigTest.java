@@ -934,4 +934,28 @@ class S3SinkConfigTest {
         );
 
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{{key}}", "{{topic}}/{{partition}}/{{key}}"})
+    void notSupportedFileMaxRecords(final String fileNameTemplate) {
+        final Map<String, String> properties =
+            Map.of(
+                S3SinkConfig.FILE_NAME_TEMPLATE_CONFIG, fileNameTemplate,
+                S3SinkConfig.FILE_MAX_RECORDS, "2",
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key",
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket"
+            );
+        final Throwable t = assertThrows(
+            ConfigException.class,
+            () -> new S3SinkConfig(properties)
+        );
+        assertEquals(
+            String.format(
+                "When file.name.template is %s, file.max.records must be either 1 or not set", 
+                fileNameTemplate
+            ),
+            t.getMessage());
+    }
+
 }
