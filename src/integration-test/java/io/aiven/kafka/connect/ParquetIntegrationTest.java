@@ -34,6 +34,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import io.aiven.kafka.connect.common.config.CompressionType;
 import io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector;
@@ -54,11 +55,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 final class ParquetIntegrationTest implements IntegrationBase {
@@ -128,11 +125,7 @@ final class ParquetIntegrationTest implements IntegrationBase {
     private KafkaProducer<byte[], byte[]> newProducer() {
         final Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
-        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArraySerializer");
-        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArraySerializer");
-        return new KafkaProducer<>(producerProps);
+        return new KafkaProducer<>(producerProps, new ByteArraySerializer(), new ByteArraySerializer());
     }
 
     @Test
@@ -168,17 +161,18 @@ final class ParquetIntegrationTest implements IntegrationBase {
 
         final var blobContents = new HashMap<String, List<GenericRecord>>();
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(topicName, 0, 0, compression),
-                getBlobName(topicName, 1, 0, compression),
-                getBlobName(topicName, 2, 0, compression),
-                getBlobName(topicName, 3, 0, compression));
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
+
             final var records =
-                    ParquetUtils.readRecords(
-                            tmpDir.resolve(Paths.get(blobName)),
-                            testBucketAccessor.readBytes(blobName)
-                    );
+                ParquetUtils.readRecords(
+                    tmpDir.resolve(Paths.get(blobName)),
+                    testBucketAccessor.readBytes(blobName)
+                );
             blobContents.put(blobName, records);
         }
 
@@ -189,11 +183,13 @@ final class ParquetIntegrationTest implements IntegrationBase {
                 final var value = "value-" + cnt;
                 final String blobName = getBlobName(topicName, partition, 0, compression);
                 final var record = blobContents.get(blobName).get(i);
-                assertEquals(key, record.get("key").toString());
-                assertEquals(value, record.get("value").toString());
-                assertNotNull(record.get("offset"));
-                assertNotNull(record.get("timestamp"));
-                assertNull(record.get("headers"));
+
+                assertThat(record.get("key")).hasToString(key);
+                assertThat(record.get("value")).hasToString(value);
+                assertThat(record.get("offset")).isNotNull();
+                assertThat(record.get("timestamp")).isNotNull();
+                assertThat(record.get("headers")).isNull();
+
                 cnt += 1;
             }
         }
@@ -231,17 +227,18 @@ final class ParquetIntegrationTest implements IntegrationBase {
 
         final var blobContents = new HashMap<String, List<GenericRecord>>();
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(topicName, 0, 0, compression),
-                getBlobName(topicName, 1, 0, compression),
-                getBlobName(topicName, 2, 0, compression),
-                getBlobName(topicName, 3, 0, compression));
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
+
             final var records =
-                    ParquetUtils.readRecords(
-                            tmpDir.resolve(Paths.get(blobName)),
-                            testBucketAccessor.readBytes(blobName)
-                    );
+                ParquetUtils.readRecords(
+                    tmpDir.resolve(Paths.get(blobName)),
+                    testBucketAccessor.readBytes(blobName)
+                );
             blobContents.put(blobName, records);
         }
 
@@ -252,11 +249,13 @@ final class ParquetIntegrationTest implements IntegrationBase {
                 final var value = "{\"name\": \"name-" + cnt + "\", \"value\": \"value-" + cnt + "\"}";
                 final String blobName = getBlobName(topicName, partition, 0, compression);
                 final var record = blobContents.get(blobName).get(i);
-                assertEquals(key, record.get("key").toString());
-                assertEquals(value, record.get("value").toString());
-                assertNotNull(record.get("offset"));
-                assertNotNull(record.get("timestamp"));
-                assertNull(record.get("headers"));
+
+                assertThat(record.get("key")).hasToString(key);
+                assertThat(record.get("value")).hasToString(value);
+                assertThat(record.get("offset")).isNotNull();
+                assertThat(record.get("timestamp")).isNotNull();
+                assertThat(record.get("headers")).isNull();
+
                 cnt += 1;
             }
         }
@@ -285,10 +284,10 @@ final class ParquetIntegrationTest implements IntegrationBase {
             for (int partition = 0; partition < 4; partition++) {
                 final String key = "key-" + cnt;
                 final String value =
-                        String.format(
-                                jsonMessagePattern,
-                                jsonMessageSchema, "{" + "\"name\":\"user-" + cnt + "\"}"
-                        );
+                    String.format(
+                        jsonMessagePattern,
+                        jsonMessageSchema, "{" + "\"name\":\"user-" + cnt + "\"}"
+                    );
                 cnt += 1;
 
                 sendFutures.add(sendMessageAsync(topicName, partition, key, value));
@@ -304,17 +303,18 @@ final class ParquetIntegrationTest implements IntegrationBase {
 
         final var blobContents = new HashMap<String, List<GenericRecord>>();
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(topicName, 0, 0, compression),
-                getBlobName(topicName, 1, 0, compression),
-                getBlobName(topicName, 2, 0, compression),
-                getBlobName(topicName, 3, 0, compression));
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
+
             final var records =
-                    ParquetUtils.readRecords(
-                            tmpDir.resolve(Paths.get(blobName)),
-                            testBucketAccessor.readBytes(blobName)
-                    );
+                ParquetUtils.readRecords(
+                    tmpDir.resolve(Paths.get(blobName)),
+                    testBucketAccessor.readBytes(blobName)
+                );
             blobContents.put(blobName, records);
         }
 
@@ -325,7 +325,7 @@ final class ParquetIntegrationTest implements IntegrationBase {
                 final String blobName = getBlobName(topicName, partition, 0, compression);
                 final var record = blobContents.get(blobName).get(i);
                 final String expectedLine = String.format(expectedOutput, name);
-                assertEquals(expectedLine, record.toString());
+                assertThat(record).hasToString(expectedLine);
                 cnt += 1;
             }
         }
@@ -345,8 +345,8 @@ final class ParquetIntegrationTest implements IntegrationBase {
 
         final var jsonMessageSchema = "{\"type\":\"struct\",\"fields\":[{\"type\":\"string\",\"field\":\"name\"}]}";
         final var jsonMessageNewSchema = "{\"type\":\"struct\",\"fields\":"
-                + "[{\"type\":\"string\",\"field\":\"name\"}, "
-                + "{\"type\":\"string\",\"field\":\"value\", \"default\": \"foo\"}]}";
+            + "[{\"type\":\"string\",\"field\":\"name\"}, "
+            + "{\"type\":\"string\",\"field\":\"value\", \"default\": \"foo\"}]}";
         final var jsonMessagePattern = "{\"schema\": %s, \"payload\": %s}";
 
         final List<Future<RecordMetadata>> sendFutures = new ArrayList<>();
@@ -378,29 +378,27 @@ final class ParquetIntegrationTest implements IntegrationBase {
         Thread.sleep(OFFSET_FLUSH_INTERVAL_MS * 2);
 
         final List<String> expectedBlobs = Arrays.asList(
-                getBlobName(topicName, 0, 0, compression),
-                getBlobName(topicName, 0, 5, compression),
-                getBlobName(topicName, 1, 0, compression),
-                getBlobName(topicName, 1, 5, compression),
-                getBlobName(topicName, 2, 0, compression),
-                getBlobName(topicName, 2, 5, compression),
-                getBlobName(topicName, 3, 0, compression),
-                getBlobName(topicName, 3, 5, compression)
+            getBlobName(topicName, 0, 0, compression),
+            getBlobName(topicName, 0, 5, compression),
+            getBlobName(topicName, 1, 0, compression),
+            getBlobName(topicName, 1, 5, compression),
+            getBlobName(topicName, 2, 0, compression),
+            getBlobName(topicName, 2, 5, compression),
+            getBlobName(topicName, 3, 0, compression),
+            getBlobName(topicName, 3, 5, compression)
         );
         final var blobContents = new ArrayList<String>();
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
+
             final var records =
-                    ParquetUtils.readRecords(
-                            tmpDir.resolve(Paths.get(blobName)),
-                        testBucketAccessor.readBytes(blobName)
-                    );
+                ParquetUtils.readRecords(
+                    tmpDir.resolve(Paths.get(blobName)),
+                    testBucketAccessor.readBytes(blobName)
+                );
             blobContents.addAll(records.stream().map(r -> r.get("value").toString()).collect(Collectors.toList()));
         }
-        assertIterableEquals(
-            expectedRecords.stream().sorted().collect(Collectors.toList()),
-            blobContents.stream().sorted().collect(Collectors.toList())
-        );
+        assertThat(blobContents).containsExactlyInAnyOrderElementsOf(expectedRecords);
     }
 
     private Map<String, String> awsSpecificConfig(final Map<String, String> config, final String topicName) {

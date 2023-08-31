@@ -62,8 +62,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 public class AvroIntegrationTest implements IntegrationBase {
@@ -159,8 +158,9 @@ public class AvroIntegrationTest implements IntegrationBase {
             getAvroBlobName(topicName, 1, 0, compression),
             getAvroBlobName(topicName, 2, 0, compression),
             getAvroBlobName(topicName, 3, 0, compression));
+
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         final Map<String, List<GenericRecord>> blobContents = new HashMap<>();
@@ -192,7 +192,7 @@ public class AvroIntegrationTest implements IntegrationBase {
                 cnt += 1;
 
                 final GenericRecord actualRecord = blobContents.get(blobName).get(i);
-                assertEquals(expectedRecord, actualRecord);
+                assertThat(actualRecord).isEqualTo(expectedRecord);
             }
         }
     }
@@ -222,8 +222,9 @@ public class AvroIntegrationTest implements IntegrationBase {
             getBlobName(topicName, 1, 0, compression),
             getBlobName(topicName, 2, 0, compression),
             getBlobName(topicName, 3, 0, compression));
+
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         final Map<String, List<String>> blobContents = new HashMap<>();
@@ -240,9 +241,9 @@ public class AvroIntegrationTest implements IntegrationBase {
                 cnt += 1;
 
                 final String blobName = getBlobName(topicName, partition, 0, "none");
-                final String actualLine = blobContents.get(blobName).get(i);
                 final String expectedLine = "{\"value\":" + value + ",\"key\":\"" + key + "\"}";
-                assertEquals(expectedLine, actualLine);
+
+                assertThat(blobContents.get(blobName).get(i)).isEqualTo(expectedLine);
             }
         }
     }

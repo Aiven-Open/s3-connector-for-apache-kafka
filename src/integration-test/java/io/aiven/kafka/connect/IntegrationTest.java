@@ -65,10 +65,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static com.amazonaws.SDKGlobalConfiguration.DISABLE_CERT_CHECKING_SYSTEM_PROPERTY;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 final class IntegrationTest implements IntegrationBase {
@@ -166,7 +163,7 @@ final class IntegrationTest implements IntegrationBase {
             getOldBlobName(topicName, 2, 0, compression),
             getOldBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         final Map<String, List<String>> blobContents = new HashMap<>();
@@ -180,9 +177,8 @@ final class IntegrationTest implements IntegrationBase {
 
         for (final KeyValueMessage msg : new KeyValueGenerator(4, 10, keyGen, valueGen)) {
             final String blobName = getOldBlobName(topicName, msg.partition, 0, compression);
-            final String actualLine = blobContents.get(blobName).get(msg.epoch);
-            final String expectedLine = msg.key + "," + msg.value;
-            assertEquals(expectedLine, actualLine);
+
+            assertThat(blobContents.get(blobName).get(msg.epoch)).isEqualTo(msg.key + "," + msg.value);
         }
     }
 
@@ -234,7 +230,7 @@ final class IntegrationTest implements IntegrationBase {
         final List<String> expectedBlobs =
             expectedBlobsAndContent.keySet().stream().sorted().collect(Collectors.toList());
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         for (final String blobName : expectedBlobs) {
@@ -242,8 +238,7 @@ final class IntegrationTest implements IntegrationBase {
                 testBucketAccessor.readAndDecodeLines(blobName, compression, 0, 1).stream()
                     .map(fields -> String.join(",", fields))
                     .collect(Collectors.toList());
-            assertThat(blobContent, containsInAnyOrder(expectedBlobsAndContent.get(blobName)));
-
+            assertThat(blobContent).containsExactlyInAnyOrder(expectedBlobsAndContent.get(blobName));
         }
     }
 
@@ -300,14 +295,12 @@ final class IntegrationTest implements IntegrationBase {
 
 
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         for (final String blobName : expectedBlobsAndContent.keySet()) {
-            assertEquals(
-                expectedBlobsAndContent.get(blobName),
-                testBucketAccessor.readLines(blobName, compression).get(0)
-            );
+            assertThat(testBucketAccessor.readLines(blobName, compression).get(0))
+                .isEqualTo(expectedBlobsAndContent.get(blobName));
         }
     }
 
@@ -366,7 +359,7 @@ final class IntegrationTest implements IntegrationBase {
             .collect(Collectors.toList());
 
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         for (final String blobName : expectedBlobs) {
@@ -384,7 +377,7 @@ final class IntegrationTest implements IntegrationBase {
                 value = lastValuePerKey.get(keyInBlobName);
                 expectedBlobContent = String.format("%s,%s", keyInBlobName, value);
             }
-            assertEquals(expectedBlobContent, blobContent);
+            assertThat(blobContent).isEqualTo(expectedBlobContent);
         }
     }
 
@@ -428,7 +421,7 @@ final class IntegrationTest implements IntegrationBase {
             getNewBlobName(topicName, 2, 0, compression),
             getNewBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         final Map<String, List<String>> blobContents = new HashMap<>();
@@ -445,9 +438,9 @@ final class IntegrationTest implements IntegrationBase {
                 cnt += 1;
 
                 final String blobName = getNewBlobName(topicName, partition, 0, "none");
-                final String actualLine = blobContents.get(blobName).get(i);
                 final String expectedLine = "{\"value\":" + value + ",\"key\":\"" + key + "\"}";
-                assertEquals(expectedLine, actualLine);
+
+                assertThat(blobContents.get(blobName).get(i)).isEqualTo(expectedLine);
             }
         }
     }
@@ -497,13 +490,15 @@ final class IntegrationTest implements IntegrationBase {
             getNewBlobName(topicName, 2, 0, compression),
             getNewBlobName(topicName, 3, 0, compression));
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
         }
 
         final Map<String, List<String>> blobContents = new HashMap<>();
         for (final String blobName : expectedBlobs) {
             final List<String> items = new ArrayList<>(testBucketAccessor.readLines(blobName, compression));
-            assertEquals(numEpochs + 2, items.size());
+
+            assertThat(items).hasSize(numEpochs + 2);
+
             blobContents.put(blobName, items);
         }
 
@@ -511,15 +506,17 @@ final class IntegrationTest implements IntegrationBase {
         for (final KeyValueMessage msg : new KeyValueGenerator(numPartitions, numEpochs, keyGen, valueGen)) {
             final String blobName = getNewBlobName(topicName, msg.partition, 0, compression);
             final List<String> blobContent = blobContents.get(blobName);
-            assertEquals("[", blobContent.get(0));
-            assertEquals("]", blobContent.get(blobContent.size() - 1));
+
+            assertThat(blobContent.get(0)).isEqualTo("[");
+            assertThat(blobContent.get(blobContent.size() - 1)).isEqualTo("]");
+
             final String actualLine = blobContent.get(msg.epoch + 1);  // 0 is '['
 
             String expectedLine = "{\"value\":" + msg.value + ",\"key\":\"" + msg.key + "\"}";
             if (actualLine.endsWith(",")) {
                 expectedLine += ",";
             }
-            assertEquals(expectedLine, actualLine);
+            assertThat(actualLine).isEqualTo(expectedLine);
         }
     }
 
