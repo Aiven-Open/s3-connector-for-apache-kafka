@@ -19,7 +19,6 @@ package io.aiven.kafka.connect.s3.config;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -58,9 +57,8 @@ import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_COMPRESSION;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.OUTPUT_FIELDS;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.TIMESTAMP_SOURCE;
 import static io.aiven.kafka.connect.s3.config.S3SinkConfig.TIMESTAMP_TIMEZONE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class S3SinkConfigTest {
 
@@ -88,30 +86,29 @@ class S3SinkConfigTest {
         final var conf = new S3SinkConfig(props);
         final var awsCredentials = conf.getAwsCredentials();
 
-        assertEquals("AWS_ACCESS_KEY_ID", awsCredentials.getAccessKeyId().value());
-        assertEquals("AWS_SECRET_ACCESS_KEY", awsCredentials.getSecretAccessKey().value());
-        assertEquals("THE_BUCKET", conf.getAwsS3BucketName());
-        assertEquals("AWS_S3_PREFIX", conf.getAwsS3Prefix());
-        assertEquals("AWS_S3_ENDPOINT", conf.getAwsS3EndPoint());
-        assertEquals(Regions.US_EAST_1, conf.getAwsS3Region());
-        assertEquals(CompressionType.GZIP, conf.getCompressionType());
-        assertEquals(OutputFieldEncodingType.NONE, conf.getOutputFieldEncodingType());
-        assertEquals(
-            Arrays.asList(
+        assertThat(awsCredentials.getAccessKeyId().value()).isEqualTo("AWS_ACCESS_KEY_ID");
+        assertThat(awsCredentials.getSecretAccessKey().value()).isEqualTo("AWS_SECRET_ACCESS_KEY");
+        assertThat(conf.getAwsS3BucketName()).isEqualTo("THE_BUCKET");
+        assertThat(conf.getAwsS3Prefix()).isEqualTo("AWS_S3_PREFIX");
+        assertThat(conf.getAwsS3EndPoint()).isEqualTo("AWS_S3_ENDPOINT");
+        assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
+        assertThat(conf.getCompressionType()).isEqualTo(CompressionType.GZIP);
+        assertThat(conf.getOutputFieldEncodingType()).isEqualTo(OutputFieldEncodingType.NONE);
+        assertThat(conf.getOutputFields())
+            .containsExactly(
                 new OutputField(OutputFieldType.KEY, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.VALUE, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.OFFSET, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.TIMESTAMP, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.HEADERS, OutputFieldEncodingType.NONE)
-            ),
-            conf.getOutputFields()
-        );
-        assertEquals(FormatType.forName("csv"), conf.getFormatType());
-        assertEquals(S3OutputStream.DEFAULT_PART_SIZE, conf.getAwsS3PartSize());
-        assertNull(conf.getKafkaRetryBackoffMs());
-        assertEquals(S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT, conf.getS3RetryBackoffDelayMs());
-        assertEquals(S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT, conf.getS3RetryBackoffMaxDelayMs());
-        assertEquals(S3SinkConfig.S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT, conf.getS3RetryBackoffMaxRetries());
+            );
+        assertThat(conf.getFormatType()).isEqualTo(FormatType.forName("csv"));
+        assertThat(conf.getAwsS3PartSize()).isEqualTo(S3OutputStream.DEFAULT_PART_SIZE);
+        assertThat(conf.getKafkaRetryBackoffMs()).isNull();
+        assertThat(conf.getS3RetryBackoffDelayMs()).isEqualTo(S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_DEFAULT);
+        assertThat(conf.getS3RetryBackoffMaxDelayMs()).isEqualTo(
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_DEFAULT);
+        assertThat(conf.getS3RetryBackoffMaxRetries()).isEqualTo(S3SinkConfig.S3_RETRY_BACKOFF_MAX_RETRIES_DEFAULT);
     }
 
     @Test
@@ -137,24 +134,23 @@ class S3SinkConfigTest {
         final var conf = new S3SinkConfig(props);
         final var awsCredentials = conf.getAwsCredentials();
 
-        assertEquals("AWS_ACCESS_KEY_ID", awsCredentials.getAccessKeyId().value());
-        assertEquals("AWS_SECRET_ACCESS_KEY", awsCredentials.getSecretAccessKey().value());
-        assertEquals("THE_BUCKET", conf.getAwsS3BucketName());
-        assertEquals("AWS_S3_PREFIX", conf.getAwsS3Prefix());
-        assertEquals("AWS_S3_ENDPOINT", conf.getAwsS3EndPoint());
-        assertEquals(Regions.US_EAST_1, conf.getAwsS3Region());
-        assertEquals(CompressionType.GZIP, conf.getCompressionType());
-        assertEquals(OutputFieldEncodingType.BASE64, conf.getOutputFieldEncodingType());
-        assertEquals(
-            Arrays.asList(
-                new OutputField(OutputFieldType.KEY, OutputFieldEncodingType.BASE64),
-                new OutputField(OutputFieldType.VALUE, OutputFieldEncodingType.BASE64),
-                new OutputField(OutputFieldType.OFFSET, OutputFieldEncodingType.NONE),
-                new OutputField(OutputFieldType.TIMESTAMP, OutputFieldEncodingType.NONE),
-                new OutputField(OutputFieldType.HEADERS, OutputFieldEncodingType.NONE)
-            ),
-            conf.getOutputFields()
-        );
+        assertThat(awsCredentials.getAccessKeyId().value()).isEqualTo("AWS_ACCESS_KEY_ID");
+        assertThat(awsCredentials.getSecretAccessKey().value()).isEqualTo("AWS_SECRET_ACCESS_KEY");
+        assertThat(conf.getAwsS3BucketName()).isEqualTo("THE_BUCKET");
+        assertThat(conf.getAwsS3Prefix()).isEqualTo("AWS_S3_PREFIX");
+        assertThat(conf.getAwsS3EndPoint()).isEqualTo("AWS_S3_ENDPOINT");
+        assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
+        assertThat(conf.getCompressionType()).isEqualTo(CompressionType.GZIP);
+        assertThat(conf.getOutputFieldEncodingType()).isEqualTo(OutputFieldEncodingType.BASE64);
+        assertThat(conf.getOutputFields())
+            .containsExactlyInAnyOrderElementsOf(
+                Arrays.asList(
+                    new OutputField(OutputFieldType.KEY, OutputFieldEncodingType.BASE64),
+                    new OutputField(OutputFieldType.VALUE, OutputFieldEncodingType.BASE64),
+                    new OutputField(OutputFieldType.OFFSET, OutputFieldEncodingType.NONE),
+                    new OutputField(OutputFieldType.TIMESTAMP, OutputFieldEncodingType.NONE),
+                    new OutputField(OutputFieldType.HEADERS, OutputFieldEncodingType.NONE)
+                ));
     }
 
     @Test
@@ -191,23 +187,22 @@ class S3SinkConfigTest {
         final var conf = new S3SinkConfig(props);
         final var awsCredentials = conf.getAwsCredentials();
 
-        assertEquals("AWS_ACCESS_KEY_ID", awsCredentials.getAccessKeyId().value());
-        assertEquals("AWS_SECRET_ACCESS_KEY", awsCredentials.getSecretAccessKey().value());
-        assertEquals("THE_BUCKET", conf.getAwsS3BucketName());
-        assertEquals("AWS_S3_PREFIX", conf.getAwsS3Prefix());
-        assertEquals("AWS_S3_ENDPOINT", conf.getAwsS3EndPoint());
-        assertEquals(Regions.US_EAST_1, conf.getAwsS3Region());
-        assertEquals(CompressionType.GZIP, conf.getCompressionType());
-        assertEquals(OutputFieldEncodingType.NONE, conf.getOutputFieldEncodingType());
-        assertEquals(
+        assertThat(awsCredentials.getAccessKeyId().value()).isEqualTo("AWS_ACCESS_KEY_ID");
+        assertThat(awsCredentials.getSecretAccessKey().value()).isEqualTo("AWS_SECRET_ACCESS_KEY");
+        assertThat(conf.getAwsS3BucketName()).isEqualTo("THE_BUCKET");
+        assertThat(conf.getAwsS3Prefix()).isEqualTo("AWS_S3_PREFIX");
+        assertThat(conf.getAwsS3EndPoint()).isEqualTo("AWS_S3_ENDPOINT");
+        assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
+        assertThat(conf.getCompressionType()).isEqualTo(CompressionType.GZIP);
+        assertThat(conf.getOutputFieldEncodingType()).isEqualTo(OutputFieldEncodingType.NONE);
+        assertThat(conf.getOutputFields()).containsExactlyInAnyOrderElementsOf(
             Arrays.asList(
                 new OutputField(OutputFieldType.KEY, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.VALUE, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.OFFSET, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.TIMESTAMP, OutputFieldEncodingType.NONE),
                 new OutputField(OutputFieldType.HEADERS, OutputFieldEncodingType.NONE)
-            ),
-            conf.getOutputFields()
+            )
         );
     }
 
@@ -215,24 +210,14 @@ class S3SinkConfigTest {
     final void emptyAwsAccessKeyID() {
         final Map<String, String> props = new HashMap<>();
         props.put(AWS_ACCESS_KEY_ID, "");
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [hidden] for configuration aws_access_key_id: Password must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [hidden] for configuration aws_access_key_id: Password must be non-empty");
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [hidden] for configuration aws.access.key.id: Password must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [hidden] for configuration aws.access.key.id: Password must be non-empty");
     }
 
     @Test
@@ -241,57 +226,39 @@ class S3SinkConfigTest {
         props.put(AWS_ACCESS_KEY_ID, "blah-blah-blah");
         props.put(AWS_SECRET_ACCESS_KEY, "");
 
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [hidden] for configuration aws_secret_access_key: Password must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [hidden] for configuration aws_secret_access_key: Password must be non-empty");
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [hidden] for configuration aws.secret.access.key: Password must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [hidden] for configuration aws.secret.access.key: Password must be non-empty");
     }
 
     @Test
     void wrongPartSize() {
         final var wrongMaxPartSizeProps =
-                Map.of(
-                        S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-key-id",
-                        S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "bla-bla-access-key",
-                        S3SinkConfig.AWS_S3_PART_SIZE, Long.toString(2_000_000_001L)
-                );
-        final var wrongMaxPartSizePropsT = assertThrows(
-                ConfigException.class, () -> new S3SinkConfig(wrongMaxPartSizeProps)
-        );
-        assertEquals(
-                "Invalid value 2000000001 for configuration aws.s3.part.size.bytes: "
-                        + "Part size must be no more: 2000000000 bytes (2GB)",
-                wrongMaxPartSizePropsT.getMessage()
-        );
+            Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-key-id",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "bla-bla-access-key",
+                S3SinkConfig.AWS_S3_PART_SIZE, Long.toString(2_000_000_001L)
+            );
+        assertThatThrownBy(() -> new S3SinkConfig(wrongMaxPartSizeProps))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 2000000001 for configuration aws.s3.part.size.bytes: "
+                + "Part size must be no more: 2000000000 bytes (2GB)");
 
         final var wrongMinPartSizeProps =
-                Map.of(
-                        S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-key-id",
-                        S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "bla-bla-access-key",
-                        S3SinkConfig.AWS_S3_PART_SIZE, "0"
-                );
-        final var wrongMinPartSizePropsT = assertThrows(
-                ConfigException.class, () -> new S3SinkConfig(wrongMinPartSizeProps)
-        );
-        assertEquals(
-                "Invalid value 0 for configuration aws.s3.part.size.bytes: Part size must be greater than 0",
-                wrongMinPartSizePropsT.getMessage()
-        );
+            Map.of(
+                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-key-id",
+                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "bla-bla-access-key",
+                S3SinkConfig.AWS_S3_PART_SIZE, "0"
+            );
+        assertThatThrownBy(() -> new S3SinkConfig(wrongMinPartSizeProps))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 0 for configuration aws.s3.part.size.bytes: Part size must be greater than 0");
     }
 
     @Test
@@ -300,27 +267,16 @@ class S3SinkConfigTest {
         props.put(AWS_ACCESS_KEY_ID, "blah-blah-blah");
         props.put(AWS_SECRET_ACCESS_KEY, "blah-blah-blah");
         props.put(AWS_S3_BUCKET, "");
-
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws_s3_bucket: String must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value  for configuration aws_s3_bucket: String must be non-empty");
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws.s3.bucket.name: String must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value  for configuration aws.s3.bucket.name: String must be non-empty");
     }
 
     @Test
@@ -330,31 +286,22 @@ class S3SinkConfigTest {
         props.put(AWS_SECRET_ACCESS_KEY, "blah-blah-blah");
         props.put(AWS_S3_BUCKET, "blah-blah-blah");
         props.put(AWS_S3_REGION, "");
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws_s3_region: "
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value  for configuration aws_s3_region: "
                 + "supported values are: "
-                + Arrays.stream(Regions.values()).map(Regions::getName).collect(Collectors.joining(", ")),
-            t.getMessage()
-        );
+                + Arrays.stream(Regions.values()).map(Regions::getName).collect(Collectors.joining(", ")));
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, "");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws.s3.region: "
-                + "supported values are: "
-                + Arrays.stream(Regions.values()).map(Regions::getName).collect(Collectors.joining(", ")),
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value  for configuration aws.s3.region: "
+                    + "supported values are: "
+                    + Arrays.stream(Regions.values()).map(Regions::getName).collect(Collectors.joining(", ")));
     }
 
     @Test
@@ -365,28 +312,22 @@ class S3SinkConfigTest {
         props.put(AWS_S3_BUCKET, "blah-blah-blah");
         props.put(AWS_S3_REGION, Regions.US_WEST_1.getName());
         props.put(AWS_S3_PREFIX, "");
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws_s3_prefix: String must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value  for configuration aws_s3_prefix: String must be non-empty"
+            );
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_WEST_1.getName());
         props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws.s3.prefix: String must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value  for configuration aws.s3.prefix: String must be non-empty"
+            );
     }
 
     @Test
@@ -398,14 +339,11 @@ class S3SinkConfigTest {
         props.put(AWS_S3_REGION, Regions.US_EAST_1.getName());
         props.put(AWS_S3_PREFIX, "blah-blah-blah");
         props.put(AWS_S3_ENDPOINT, "");
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws_s3_endpoint: String must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value  for configuration aws_s3_endpoint: String must be non-empty"
+            );
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
@@ -413,14 +351,11 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_ENDPOINT_CONFIG, "");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value  for configuration aws.s3.endpoint: String must be non-empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value  for configuration aws.s3.endpoint: String must be non-empty"
+            );
     }
 
     @Test
@@ -432,14 +367,11 @@ class S3SinkConfigTest {
         props.put(AWS_S3_REGION, Regions.US_EAST_1.getName());
         props.put(AWS_S3_PREFIX, "blah-blah-blah");
         props.put(AWS_S3_ENDPOINT, "ffff://asdsadas");
-        Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value ffff://asdsadas for configuration aws_s3_endpoint: should be valid URL",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value ffff://asdsadas for configuration aws_s3_endpoint: should be valid URL"
+            );
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
@@ -447,14 +379,11 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_ENDPOINT_CONFIG, "ffff://asdsadas");
-        t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value ffff://asdsadas for configuration aws.s3.endpoint: should be valid URL",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value ffff://asdsadas for configuration aws.s3.endpoint: should be valid URL"
+            );
     }
 
 
@@ -468,24 +397,16 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "blah-blah-blah");
         props.put(OUTPUT_FIELDS, "");
 
-        Throwable t = assertThrows(
-            ConfigException.class, () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [] for configuration output_fields: cannot be empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [] for configuration output_fields: cannot be empty");
 
         props.remove(OUTPUT_FIELDS);
         props.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "");
 
-        t = assertThrows(
-            ConfigException.class, () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [] for configuration format.output.fields: cannot be empty",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [] for configuration format.output.fields: cannot be empty");
     }
 
     @Test
@@ -502,12 +423,8 @@ class S3SinkConfigTest {
 
         final var conf = new S3SinkConfig(props);
 
-        assertEquals(
-            List.of(
-                new OutputField(OutputFieldType.KEY, OutputFieldEncodingType.BASE64)
-            ),
-            conf.getOutputFields()
-        );
+        assertThat(conf.getOutputFields())
+            .containsExactly(new OutputField(OutputFieldType.KEY, OutputFieldEncodingType.BASE64));
     }
 
     @Test
@@ -519,101 +436,84 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_WEST_1.getName());
         props.put(OUTPUT_FIELDS, "key,value,offset,timestamp,unsupported");
 
-        Throwable t = assertThrows(
-            ConfigException.class, () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [key, value, offset, timestamp, unsupported] "
-                + "for configuration output_fields: "
-                + "supported values are: 'key', 'value', 'offset', 'timestamp', 'headers'",
-            t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value [key, value, offset, timestamp, unsupported] "
+                    + "for configuration output_fields: "
+                    + "supported values are: 'key', 'value', 'offset', 'timestamp', 'headers'"
+            );
 
         props.remove(OUTPUT_FIELDS);
         props.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value,offset,timestamp,unsupported");
 
-        t = assertThrows(
-            ConfigException.class, () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value [key, value, offset, timestamp, unsupported] "
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value [key, value, offset, timestamp, unsupported] "
                 + "for configuration format.output.fields: "
-                + "supported values are: 'key', 'value', 'offset', 'timestamp', 'headers'",
-            t.getMessage()
-        );
+                + "supported values are: 'key', 'value', 'offset', 'timestamp', 'headers'"
+            );
     }
 
     @Test
     void customAwsS3BackoffPolicy() {
         final var props = Map.of(
-                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG, "2000",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG, "4000",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "10"
+            S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG, "2000",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG, "4000",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "10"
         );
         final var config = new S3SinkConfig(props);
 
-        assertEquals(2000L, config.getS3RetryBackoffDelayMs());
-        assertEquals(4000L, config.getS3RetryBackoffMaxDelayMs());
-        assertEquals(10, config.getS3RetryBackoffMaxRetries());
+        assertThat(config.getS3RetryBackoffDelayMs()).isEqualTo(2000L);
+        assertThat(config.getS3RetryBackoffMaxDelayMs()).isEqualTo(4000L);
+        assertThat(config.getS3RetryBackoffMaxRetries()).isEqualTo(10);
     }
 
     @Test
     void wrongAwsS3BackoffPolicy() {
         final var wrongDelayProps = Map.of(
-                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG, "0"
+            S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_DELAY_MS_CONFIG, "0"
         );
-        final var wrongDelayE =
-                assertThrows(ConfigException.class, () -> new S3SinkConfig(wrongDelayProps));
-        assertEquals(
-                "Invalid value 0 for configuration aws.s3.backoff.delay.ms: Value must be at least 1",
-                wrongDelayE.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(wrongDelayProps))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 0 for configuration aws.s3.backoff.delay.ms: Value must be at least 1");
 
         final var wrongMaxDelayProps = Map.of(
-                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG, "0"
+            S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_DELAY_MS_CONFIG, "0"
         );
-        final var wrongMaxDelayE =
-                assertThrows(ConfigException.class, () -> new S3SinkConfig(wrongMaxDelayProps));
-        assertEquals(
-                "Invalid value 0 for configuration aws.s3.backoff.max.delay.ms: Value must be at least 1",
-                wrongMaxDelayE.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(wrongMaxDelayProps))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 0 for configuration aws.s3.backoff.max.delay.ms: Value must be at least 1");
 
         final var wrongMaxRetriesProps = Map.of(
-                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "0"
+            S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "0"
         );
-        final var wrongMaxRetriesE =
-                assertThrows(ConfigException.class, () -> new S3SinkConfig(wrongMaxRetriesProps));
-        assertEquals(
-                "Invalid value 0 for configuration aws.s3.backoff.max.retries: Value must be at least 1",
-                wrongMaxRetriesE.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(wrongMaxRetriesProps))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 0 for configuration aws.s3.backoff.max.retries: Value must be at least 1");
 
         final var tooBigMaxRetriesProps = Map.of(
-                S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
-                S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "35"
+            S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "blah-blah-blah",
+            S3SinkConfig.AWS_S3_RETRY_BACKOFF_MAX_RETRIES_CONFIG, "35"
         );
-        final var tooBigMaxRetriesE =
-                assertThrows(ConfigException.class, () -> new S3SinkConfig(tooBigMaxRetriesProps));
-        assertEquals(
-                "Invalid value 35 for configuration aws.s3.backoff.max.retries: "
-                        + "Value must be no more than 30",
-                tooBigMaxRetriesE.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(tooBigMaxRetriesProps))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 35 for configuration aws.s3.backoff.max.retries: "
+                + "Value must be no more than 30");
     }
 
     @ParameterizedTest
@@ -631,10 +531,7 @@ class S3SinkConfigTest {
         }
 
         var config = new S3SinkConfig(props);
-        assertEquals(
-            determineExpectedCompressionType(compression),
-            config.getCompressionType()
-        );
+        assertThat(config.getCompressionType()).isEqualTo(determineExpectedCompressionType(compression));
 
         props.remove(OUTPUT_COMPRESSION);
         if (!Objects.isNull(compression)) {
@@ -642,10 +539,8 @@ class S3SinkConfigTest {
         }
 
         config = new S3SinkConfig(props);
-        assertEquals(
-            determineExpectedCompressionType(compression),
-            config.getCompressionType()
-        );
+        assertThat(config.getCompressionType())
+            .isEqualTo(determineExpectedCompressionType(compression));
     }
 
     @Test
@@ -661,7 +556,7 @@ class S3SinkConfigTest {
 
         final var config = new S3SinkConfig(props);
 
-        assertEquals(CompressionType.NONE, config.getCompressionType());
+        assertThat(config.getCompressionType()).isEqualTo(CompressionType.NONE);
     }
 
     private CompressionType determineExpectedCompressionType(final String compression) {
@@ -688,24 +583,19 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.FORMAT_OUTPUT_FIELDS_CONFIG, "key,value,offset,timestamp");
         props.put(OUTPUT_COMPRESSION, "unsupported");
 
-        Throwable t = assertThrows(
-            ConfigException.class, () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value unsupported for configuration output_compression: "
-                + "supported values are: 'none', 'gzip', 'snappy', 'zstd'",
-            t.getMessage());
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value unsupported for configuration output_compression: "
+                    + "supported values are: 'none', 'gzip', 'snappy', 'zstd'");
 
         props.remove(OUTPUT_COMPRESSION);
         props.put(S3SinkConfig.FILE_COMPRESSION_TYPE_CONFIG, "unsupported");
 
-        t = assertThrows(
-            ConfigException.class, () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value unsupported for configuration file.compression.type: "
-                + "supported values are: 'none', 'gzip', 'snappy', 'zstd'",
-            t.getMessage());
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value unsupported for configuration file.compression.type: "
+                + "supported values are: 'none', 'gzip', 'snappy', 'zstd'");
     }
 
     @ParameterizedTest
@@ -741,15 +631,14 @@ class S3SinkConfigTest {
                     OldFullKeyFormatters.timestamp(null, config.getTimestampSource(), parameter))
                 .render();
 
-        assertEquals(
-            String.format(
-                "%s/%s/%s/",
-                expectedTimestamp.format(DateTimeFormatter.ofPattern("yyyy")),
-                expectedTimestamp.format(DateTimeFormatter.ofPattern("MM")),
-                expectedTimestamp.format(DateTimeFormatter.ofPattern("dd"))
-            ),
-            renderedPrefix
-        );
+        assertThat(renderedPrefix)
+            .isEqualTo(
+                String.format(
+                    "%s/%s/%s/",
+                    expectedTimestamp.format(DateTimeFormatter.ofPattern("yyyy")),
+                    expectedTimestamp.format(DateTimeFormatter.ofPattern("MM")),
+                    expectedTimestamp.format(DateTimeFormatter.ofPattern("dd"))
+                ));
     }
 
     @ParameterizedTest
@@ -762,25 +651,22 @@ class S3SinkConfigTest {
         properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "any_prefix");
         properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, formatType);
 
-
         final S3SinkConfig c = new S3SinkConfig(properties);
         final FormatType expectedFormatType = FormatType.forName(formatType);
 
-        assertEquals(expectedFormatType, c.getFormatType());
+        assertThat(c.getFormatType()).isEqualTo(expectedFormatType);
     }
 
     @Test
     void wrongFormatTypeConfig() {
-        final Map<String, String> properties = new HashMap<>();
-        properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "unknown");
+        final Map<String, String> props = new HashMap<>();
+        props.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "unknown");
 
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(properties)
-        );
-        assertEquals(
-            "Invalid value unknown for configuration format.output.type: "
-                + "supported values are: 'avro', 'csv', 'json', 'jsonl', 'parquet'", t.getMessage());
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value unknown for configuration format.output.type: "
+                    + "supported values are: 'avro', 'csv', 'json', 'jsonl', 'parquet'");
 
     }
 
@@ -796,16 +682,13 @@ class S3SinkConfigTest {
                 S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key",
                 S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket"
             );
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(properties)
-        );
-        assertEquals(
-            "Invalid value {{topic}}-{{timestamp:unit=YYYY}}-{{partition}}-{{start_offset:padding=true}}.gz "
-                + "for configuration file.name.template: unsupported set of template variables parameters, "
-                + "supported sets are: "
-                + "partition:padding=true|false,start_offset:padding=true|false,timestamp:unit=yyyy|MM|dd|HH",
-            t.getMessage());
+        assertThatThrownBy(() -> new S3SinkConfig(properties))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value {{topic}}-{{timestamp:unit=YYYY}}-{{partition}}-{{start_offset:padding=true}}.gz "
+                    + "for configuration file.name.template: unsupported set of template variables parameters, "
+                    + "supported sets are: "
+                    + "partition:padding=true|false,start_offset:padding=true|false,timestamp:unit=yyyy|MM|dd|HH");
     }
 
     @Test
@@ -820,10 +703,10 @@ class S3SinkConfigTest {
 
         final var conf = new S3SinkConfig(props);
 
-        assertEquals("arn:aws:iam::12345678910:role/S3SinkTask", conf.getStsRole().getArn());
-        assertEquals("EXTERNAL_ID", conf.getStsRole().getExternalId());
-        assertEquals("SESSION_NAME", conf.getStsRole().getSessionName());
-        assertEquals(Regions.US_EAST_1, conf.getAwsS3Region());
+        assertThat(conf.getStsRole().getArn()).isEqualTo("arn:aws:iam::12345678910:role/S3SinkTask");
+        assertThat(conf.getStsRole().getExternalId()).isEqualTo("EXTERNAL_ID");
+        assertThat(conf.getStsRole().getSessionName()).isEqualTo("SESSION_NAME");
+        assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
     }
 
     @Test
@@ -835,15 +718,11 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
                 "Either {aws.access.key.id, aws.secret.access.key} or"
-                        + " {aws.sts.role.arn, aws.sts.role.session.name} should be set",
-                t.getMessage()
-        );
+                    + " {aws.sts.role.arn, aws.sts.role.session.name} should be set");
     }
 
     @Test
@@ -855,15 +734,12 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
                 "Either {aws.access.key.id, aws.secret.access.key} or"
-                        + " {aws.sts.role.arn, aws.sts.role.session.name} should be set",
-                t.getMessage()
-        );
+                    + " {aws.sts.role.arn, aws.sts.role.session.name} should be set"
+            );
     }
 
     @Test
@@ -877,25 +753,17 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "30");
 
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-                "Invalid value 30 for configuration aws.sts.role.session.duration: Value must be at least 900",
-                t.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Invalid value 30 for configuration aws.sts.role.session.duration: Value must be at least 900");
 
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "50000");
 
-        final Throwable t2 = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "Invalid value 50000 for configuration aws.sts.role.session.duration: Value must be no more than 43200",
-            t2.getMessage()
-        );
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(
+                "Invalid value 50000 for configuration aws.sts.role.session.duration: "
+                    + "Value must be no more than 43200");
     }
 
     @Test
@@ -911,7 +779,7 @@ class S3SinkConfigTest {
 
         final var conf = new S3SinkConfig(props);
 
-        assertEquals(900, conf.getStsRole().getSessionDurationSeconds());
+        assertThat(conf.getStsRole().getSessionDurationSeconds()).isEqualTo(900);
     }
 
     @Test
@@ -924,15 +792,9 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
         props.put(S3SinkConfig.AWS_STS_CONFIG_ENDPOINT, "https://sts.eu-north-1.amazonaws.com");
 
-        final Throwable t3 = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(props)
-        );
-        assertEquals(
-            "aws.s3.region should be specified together with aws.sts.config.endpoint",
-            t3.getMessage()
-        );
-
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("aws.s3.region should be specified together with aws.sts.config.endpoint");
     }
 
     @ParameterizedTest
@@ -946,16 +808,12 @@ class S3SinkConfigTest {
                 S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key",
                 S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket"
             );
-        final Throwable t = assertThrows(
-            ConfigException.class,
-            () -> new S3SinkConfig(properties)
-        );
-        assertEquals(
-            String.format(
-                "When file.name.template is %s, file.max.records must be either 1 or not set", 
+        assertThatThrownBy(() -> new S3SinkConfig(properties))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage(String.format(
+                "When file.name.template is %s, file.max.records must be either 1 or not set",
                 fileNameTemplate
-            ),
-            t.getMessage());
+            ));
     }
 
 }

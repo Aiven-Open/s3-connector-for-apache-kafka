@@ -58,11 +58,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 class AvroParquetIntegrationTest implements IntegrationBase {
@@ -170,7 +166,7 @@ class AvroParquetIntegrationTest implements IntegrationBase {
             getBlobName(topicName, 3, 0, compression));
         final Map<String, List<GenericRecord>> blobContents = new HashMap<>();
         for (final String blobName : expectedBlobs) {
-            assertTrue(testBucketAccessor.doesObjectExist(blobName));
+            assertThat(testBucketAccessor.doesObjectExist(blobName)).isTrue();
             final var records =
                     ParquetUtils.readRecords(
                             tmpDir.resolve(Paths.get(blobName)),
@@ -188,11 +184,13 @@ class AvroParquetIntegrationTest implements IntegrationBase {
                 final GenericRecord record = blobContents.get(blobName).get(i);
                 final var expectedKey = "key-" + cnt;
                 final var expectedValue = "{\"name\": \"" + name + "\", \"value\": \"" + value + "\"}";
-                assertEquals(expectedKey, record.get("key").toString());
-                assertEquals(expectedValue, record.get("value").toString());
-                assertNotNull(record.get("offset"));
-                assertNotNull(record.get("timestamp"));
-                assertNull(record.get("headers"));
+
+                assertThat(record.get("key").toString()).isEqualTo(expectedKey);
+                assertThat(record.get("value").toString()).isEqualTo(expectedValue);
+                assertThat(record.get("offset")).isNotNull();
+                assertThat(record.get("timestamp")).isNotNull();
+                assertThat(record.get("headers")).isNull();
+
                 cnt += 1;
             }
         }
@@ -257,8 +255,10 @@ class AvroParquetIntegrationTest implements IntegrationBase {
                 final String blobName = getBlobName(topicName, partition, 0, "none");
                 final var record = blobContents.get(blobName).get(i);
                 final var avroRecord = (GenericRecord) record.get("value");
-                assertEquals(name, avroRecord.get("name").toString());
-                assertEquals(value, avroRecord.get("value").toString());
+
+                assertThat(avroRecord.get("name").toString()).isEqualTo(name);
+                assertThat(avroRecord.get("value").toString()).isEqualTo(value);
+
                 cnt += 1;
             }
         }
@@ -338,10 +338,9 @@ class AvroParquetIntegrationTest implements IntegrationBase {
                     );
             blobContents.addAll(records.stream().map(r -> r.get("value").toString()).collect(Collectors.toList()));
         }
-        assertIterableEquals(
-                expectedRecords.stream().sorted().collect(Collectors.toList()),
-                blobContents.stream().sorted().collect(Collectors.toList())
-        );
+
+        assertThat(blobContents)
+            .containsExactlyInAnyOrderElementsOf(expectedRecords);
     }
 
     private KafkaProducer<String, GenericRecord> newProducer() {
