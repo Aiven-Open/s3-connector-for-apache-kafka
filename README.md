@@ -484,7 +484,7 @@ List of deprecated configuration parameters:
 List of new configuration parameters:
 - `aws.access.key.id` - AWS Access Key ID for accessing S3 bucket.
 - `aws.secret.access.key` - AWS S3 Secret Access Key.
-- `aws.s3.bucket.name` - - Name of an existing bucket for storing the records. Mandatory.
+- `aws.s3.bucket.name` - - Name of an existing bucket for storing the records. Mandatory. See bucket name rules: <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html>
 - `aws.s3.endpoint` - The endpoint configuration (service endpoint & signing region) to be used for requests.
 - `aws.s3.prefix` - [Deprecated] Use `file.name.prefix` and `file.name.template` instead. The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
 - `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`.

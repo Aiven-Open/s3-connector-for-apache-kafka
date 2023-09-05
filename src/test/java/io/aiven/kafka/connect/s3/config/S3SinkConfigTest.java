@@ -68,7 +68,7 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_ENDPOINT_CONFIG, "AWS_S3_ENDPOINT");
         props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "AWS_S3_PREFIX");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
@@ -88,7 +88,7 @@ class S3SinkConfigTest {
 
         assertThat(awsCredentials.getAccessKeyId().value()).isEqualTo("AWS_ACCESS_KEY_ID");
         assertThat(awsCredentials.getSecretAccessKey().value()).isEqualTo("AWS_SECRET_ACCESS_KEY");
-        assertThat(conf.getAwsS3BucketName()).isEqualTo("THE_BUCKET");
+        assertThat(conf.getAwsS3BucketName()).isEqualTo("the-bucket");
         assertThat(conf.getAwsS3Prefix()).isEqualTo("AWS_S3_PREFIX");
         assertThat(conf.getAwsS3EndPoint()).isEqualTo("AWS_S3_ENDPOINT");
         assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
@@ -117,7 +117,7 @@ class S3SinkConfigTest {
 
         props.put(AWS_ACCESS_KEY_ID, "AWS_ACCESS_KEY_ID");
         props.put(AWS_SECRET_ACCESS_KEY, "AWS_SECRET_ACCESS_KEY");
-        props.put(AWS_S3_BUCKET, "THE_BUCKET");
+        props.put(AWS_S3_BUCKET, "the-bucket");
         props.put(AWS_S3_ENDPOINT, "AWS_S3_ENDPOINT");
         props.put(AWS_S3_PREFIX, "AWS_S3_PREFIX");
         props.put(AWS_S3_REGION, Regions.US_EAST_1.getName());
@@ -136,7 +136,7 @@ class S3SinkConfigTest {
 
         assertThat(awsCredentials.getAccessKeyId().value()).isEqualTo("AWS_ACCESS_KEY_ID");
         assertThat(awsCredentials.getSecretAccessKey().value()).isEqualTo("AWS_SECRET_ACCESS_KEY");
-        assertThat(conf.getAwsS3BucketName()).isEqualTo("THE_BUCKET");
+        assertThat(conf.getAwsS3BucketName()).isEqualTo("the-bucket");
         assertThat(conf.getAwsS3Prefix()).isEqualTo("AWS_S3_PREFIX");
         assertThat(conf.getAwsS3EndPoint()).isEqualTo("AWS_S3_ENDPOINT");
         assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
@@ -159,7 +159,7 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_ENDPOINT_CONFIG, "AWS_S3_ENDPOINT");
         props.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "AWS_S3_PREFIX");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
@@ -176,7 +176,7 @@ class S3SinkConfigTest {
 
         props.put(AWS_ACCESS_KEY_ID, "AWS_ACCESS_KEY_ID_#1");
         props.put(AWS_SECRET_ACCESS_KEY, "AWS_SECRET_ACCESS_KEY_#1");
-        props.put(AWS_S3_BUCKET, "THE_BUCKET_#1");
+        props.put(AWS_S3_BUCKET, "the-bucket1");
         props.put(AWS_S3_ENDPOINT, "AWS_S3_ENDPOINT_#1");
         props.put(AWS_S3_PREFIX, "AWS_S3_PREFIX_#1");
         props.put(AWS_S3_REGION, Regions.US_WEST_1.getName());
@@ -189,7 +189,7 @@ class S3SinkConfigTest {
 
         assertThat(awsCredentials.getAccessKeyId().value()).isEqualTo("AWS_ACCESS_KEY_ID");
         assertThat(awsCredentials.getSecretAccessKey().value()).isEqualTo("AWS_SECRET_ACCESS_KEY");
-        assertThat(conf.getAwsS3BucketName()).isEqualTo("THE_BUCKET");
+        assertThat(conf.getAwsS3BucketName()).isEqualTo("the-bucket");
         assertThat(conf.getAwsS3Prefix()).isEqualTo("AWS_S3_PREFIX");
         assertThat(conf.getAwsS3EndPoint()).isEqualTo("AWS_S3_ENDPOINT");
         assertThat(conf.getAwsS3Region()).isEqualTo(Regions.US_EAST_1);
@@ -269,14 +269,37 @@ class S3SinkConfigTest {
         props.put(AWS_S3_BUCKET, "");
         assertThatThrownBy(() -> new S3SinkConfig(props))
             .isInstanceOf(ConfigException.class)
-            .hasMessage("Invalid value  for configuration aws_s3_bucket: String must be non-empty");
+            .hasMessage("Illegal bucket name: Bucket name should be between 3 and 63 characters long");
 
         props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "");
         assertThatThrownBy(() -> new S3SinkConfig(props))
             .isInstanceOf(ConfigException.class)
-            .hasMessage("Invalid value  for configuration aws.s3.bucket.name: String must be non-empty");
+            .hasMessage("Illegal bucket name: Bucket name should be between 3 and 63 characters long");
+    }
+
+    @Test
+    final void invalidAwsS3Bucket() {
+        final Map<String, String> props = new HashMap<>();
+        props.put(AWS_ACCESS_KEY_ID, "blah-blah-blah");
+        props.put(AWS_SECRET_ACCESS_KEY, "blah-blah-blah");
+        props.put(AWS_S3_BUCKET, "BUCKET-NAME");
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Illegal bucket name: Bucket name should not contain uppercase characters");
+
+        props.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "blah-blah-blah");
+        props.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "blah-blah-blah");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "BUCKET-NAME");
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Illegal bucket name: Bucket name should not contain uppercase characters");
+
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "bucket_name");
+        assertThatThrownBy(() -> new S3SinkConfig(props))
+            .isInstanceOf(ConfigException.class)
+            .hasMessage("Illegal bucket name: Bucket name should not contain '_'");
     }
 
     @Test
@@ -647,7 +670,7 @@ class S3SinkConfigTest {
         final Map<String, String> properties = new HashMap<>();
         properties.put(S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id");
         properties.put(S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key");
-        properties.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket");
+        properties.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any-bucket");
         properties.put(S3SinkConfig.AWS_S3_PREFIX_CONFIG, "any_prefix");
         properties.put(S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, formatType);
 
@@ -680,7 +703,7 @@ class S3SinkConfigTest {
                     + "-{{partition}}-{{start_offset:padding=true}}.gz",
                 S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id",
                 S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket"
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any-bucket"
             );
         assertThatThrownBy(() -> new S3SinkConfig(properties))
             .isInstanceOf(ConfigException.class)
@@ -698,7 +721,7 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
         props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
         final var conf = new S3SinkConfig(props);
@@ -715,7 +738,7 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
         assertThatThrownBy(() -> new S3SinkConfig(props))
@@ -731,7 +754,7 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
         props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
         assertThatThrownBy(() -> new S3SinkConfig(props))
@@ -748,7 +771,7 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "30");
@@ -772,7 +795,7 @@ class S3SinkConfigTest {
 
         props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_S3_REGION_CONFIG, Regions.US_EAST_1.getName());
 
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_DURATION, "900");
@@ -789,7 +812,7 @@ class S3SinkConfigTest {
         props.put(S3SinkConfig.AWS_STS_ROLE_ARN, "arn:aws:iam::12345678910:role/S3SinkTask");
         props.put(S3SinkConfig.AWS_STS_ROLE_EXTERNAL_ID, "EXTERNAL_ID");
         props.put(S3SinkConfig.AWS_STS_ROLE_SESSION_NAME, "SESSION_NAME");
-        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "THE_BUCKET");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket");
         props.put(S3SinkConfig.AWS_STS_CONFIG_ENDPOINT, "https://sts.eu-north-1.amazonaws.com");
 
         assertThatThrownBy(() -> new S3SinkConfig(props))
@@ -806,7 +829,7 @@ class S3SinkConfigTest {
                 S3SinkConfig.FILE_MAX_RECORDS, "2",
                 S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "any_access_key_id",
                 S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "any_secret_key",
-                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any_bucket"
+                S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any-bucket"
             );
         assertThatThrownBy(() -> new S3SinkConfig(properties))
             .isInstanceOf(ConfigException.class)

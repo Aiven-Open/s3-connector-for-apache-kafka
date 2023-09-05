@@ -372,7 +372,7 @@ public class S3SinkTaskTest {
             S3SinkConfig.FORMAT_OUTPUT_TYPE_CONFIG, "jsonl",
             S3SinkConfig.AWS_ACCESS_KEY_ID_CONFIG, "AWS_ACCESS_KEY_ID_CONFIG",
             S3SinkConfig.AWS_SECRET_ACCESS_KEY_CONFIG, "AWS_SECRET_ACCESS_KEY_CONFIG",
-            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "AWS_S3_BUCKET_NAME_CONFIG",
+            S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "the-bucket",
             "aws.s3.backoff.delay.ms", "1",
             "aws.s3.backoff.max.delay.ms", "2",
             "aws.s3.backoff.max.retries", "3");
