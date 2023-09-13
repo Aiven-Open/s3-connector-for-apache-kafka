@@ -448,7 +448,7 @@ Having `format.output.envelope=false` can produce the following output:
 
 ### Connector Configuration
 
-**Important Note** Since version `2.6` all existing configuration
+> **Important Note** Since version `2.6` all existing configuration
 is deprecated and will be replaced with new one during a certain transition period (within 2-3 releases)
 
 List of deprecated configuration parameters:
