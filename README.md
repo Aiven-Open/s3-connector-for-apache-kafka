@@ -116,8 +116,18 @@ enabled).
 ### Record grouping
 
 Incoming records are being grouped until flushed.
+The connector flushes grouped records in one file per `offset.flush.interval.ms` setting for partitions that have received new messages during this period. The setting defaults to 60 seconds.
+
+Record grouping, similar to Kafka topics, has 2 modes:
+
+- Changelog: Connector groups all records in the order received from a Kafka topic, and stores all of them in a file.
+- Compact: Connector groups all records by an identity (e.g. key) and only keeps the latest value stored in a file.
+
+Modes are defined implicitly by the fields used of the [file name template](#file-name-format).
 
 #### Grouping by the topic and partition
+
+*Mode: Changelog*
 
 In this mode, the connector groups records by the topic and partition.
 When a file is written, an offset of the first record in it is added to
@@ -152,6 +162,8 @@ In this case, there will be two files `topicA-part0-off0` and
 `topicA-part0-off2` with two records in each.
 
 #### Grouping by the key
+
+*Mode: Compact*
 
 In this mode, the connector groups records by the Kafka key. It always
 puts one record in a file, the latest record that arrived before a flush
@@ -223,7 +235,6 @@ Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnect
 ### S3 Object Names
 
 S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]`. The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
-The connector creates one file per Apache Kafka Connect `offset.flush.interval.ms` setting for partitions that have received new messages during that period. The setting defaults to 60 seconds.
 
 ### Data File Format
 
