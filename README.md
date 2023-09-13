@@ -6,6 +6,15 @@ This is a sink Apache Kafka Connect connector that stores Apache Kafka messages 
 
 The connector requires Java 11 or newer for development and production.
 
+**Table of Contents**
+
+- [How it works](#how-it-works)
+- [Data Format](#data-format)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Development](#development)
+
+
 ## How it works
 
 The connector subscribes to the specified Kafka topics and collects messages coming in them and periodically dumps the collected data to the specified bucket in AWS S3.
