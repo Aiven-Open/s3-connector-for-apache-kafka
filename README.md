@@ -4,8 +4,6 @@
 
 This is a sink Apache Kafka Connect connector that stores Apache Kafka messages in an AWS S3 bucket.
 
-The connector requires Java 11 or newer for development and production.
-
 **Table of Contents**
 
 - [How it works](#how-it-works)
@@ -18,6 +16,13 @@ The connector requires Java 11 or newer for development and production.
 ## How it works
 
 The connector subscribes to the specified Kafka topics and collects messages coming in them and periodically dumps the collected data to the specified bucket in AWS S3.
+
+### Requirements
+
+The connector requires Java 11 or newer for development and production.
+
+#### Authorization
+
 The connector needs the following permissions to the specified bucket:
 * ``s3:GetObject``
 * ``s3:PutObject``
@@ -25,9 +30,9 @@ The connector needs the following permissions to the specified bucket:
 * ``s3:ListMultipartUploadParts``
 * ``s3:ListBucketMultipartUploads``
 
-In case of ``Access Denied`` error see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
+In case of ``Access Denied`` error, see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
 
-### Credentials
+#### Authentication
 
 To make the connector work, a user has to specify AWS credentials that allow writing to S3.
 There are two ways to specify AWS credentials in this connector:
@@ -47,6 +52,8 @@ It is also important to specify `aws.sts.role.external.id` for the security reas
 (see some details [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html)).
 
 ### File name format
+
+> File name format is tightly related to [Record Grouping](#record-grouping)
 
 The connector uses the following format for output files (blobs):
 `<prefix><filename>`.
@@ -98,6 +105,9 @@ record grouping modes are:
 - `topic`, `partition`, `start_offset`, and `timestamp` - grouping by the topic,
   partition, and timestamp;
 - `key` - grouping by the key.
+- `key`, `topic`, `partition` - grouping by the topic, partition, and key.
+
+See record grouping in the next section for more details.
 
 If the file name template is not specified, the default value is
 `{{topic}}-{{partition}}-{{start_offset}}` (+ `.gz` when compression is
