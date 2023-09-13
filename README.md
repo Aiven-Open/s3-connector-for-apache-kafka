@@ -435,35 +435,6 @@ Having `format.output.envelope=false` can produce the following output:
 - Connector works just fine with and without Schema Registry
 - `format.output.envelope=false` is ignored if the value is not of type `org.apache.avro.Schema.Type.RECORD` or `org.apache.avro.Schema.Type.MAP`.
 
-## S3 multi-part uploads
-
-To configure S3 multi-part uploads buffer size change:
- - `aws.s3.part.size.bytes` - The Part Size in 
-   S3 Multi-part Uploads in bytes. 
-   Maximum is `2GB` and default is `5MB`.
-
-## Retry strategy configuration
-
-There are four configuration properties to configure retry strategy exists.
-
-### Apache Kafka connect retry strategy configuration property
-
-- `kafka.retry.backoff.ms` - The retry backoff in milliseconds. This config is used to notify Apache Kafka Connect to retry delivering a message batch or
-  performing recovery in case of transient exceptions. Maximum value is `24` hours.
-
-### AWS S3 retry strategy configuration properties
- 
-- `aws.s3.backoff.delay.ms` - S3 default base sleep time 
-  for non-throttled exceptions in milliseconds. 
-  Default is `100` ms.
-- `aws.s3.backoff.max.delay.ms` - S3 maximum back-off 
-  time before retrying a request in milliseconds. 
-  Default is `20 000` ms.
-- `aws.s3.backoff.max.retries` - Maximum retry limit 
-  (if the value is greater than 30, there can be 
-  integer overflow issues during delay calculation). 
-  Default is `3`.
-
 ## Usage
 
 ### Connector Configuration
@@ -582,6 +553,35 @@ timestamp.timezone=Europe/Berlin
 # Supports only `wallclock` which is the default value.
 timestamp.source=wallclock
 ```
+
+### S3 multi-part uploads
+
+To configure S3 multi-part uploads buffer size change:
+- `aws.s3.part.size.bytes` - The Part Size in
+  S3 Multi-part Uploads in bytes.
+  Maximum is `2GB` and default is `5MB`.
+
+### Retry strategy configuration
+
+There are four configuration properties to configure retry strategy exists.
+
+#### Apache Kafka connect retry strategy configuration property
+
+- `kafka.retry.backoff.ms` - The retry backoff in milliseconds. This config is used to notify Apache Kafka Connect to retry delivering a message batch or
+  performing recovery in case of transient exceptions. Maximum value is `24` hours.
+
+#### AWS S3 retry strategy configuration properties
+
+- `aws.s3.backoff.delay.ms` - S3 default base sleep time
+  for non-throttled exceptions in milliseconds.
+  Default is `100` ms.
+- `aws.s3.backoff.max.delay.ms` - S3 maximum back-off
+  time before retrying a request in milliseconds.
+  Default is `20 000` ms.
+- `aws.s3.backoff.max.retries` - Maximum retry limit
+  (if the value is greater than 30, there can be
+  integer overflow issues during delay calculation).
+  Default is `3`.
 
 ## Development
 
