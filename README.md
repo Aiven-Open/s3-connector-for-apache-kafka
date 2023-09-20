@@ -234,7 +234,9 @@ Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnect
 
 ### S3 Object Names
 
-S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]`. The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
+S3 connector stores series of files in the specified bucket. 
+Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]` (see [#file-name-format](File name format section) for more patterns). 
+The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
 
 ### Data File Format
 
