@@ -87,7 +87,7 @@ ext {
     junitVersion = "5.10.0"
     testcontainersVersion = "1.19.0"
     localstackVersion = "0.2.23"
-    wireMockVersion = "2.35.0"
+    wireMockVersion = "3.0.1"
     mockitoVersion = "5.5.0"
 }
 
