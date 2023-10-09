@@ -65,7 +65,7 @@ public class AivenKafkaConnectS3SinkConnector extends SinkConnector {
     public void start(final Map<String, String> properties) {
         Objects.requireNonNull(properties, "properties haven't been set");
         configProperties = Map.copyOf(properties);
-        LOGGER.info("Stop S3 connector");
+        LOGGER.info("Start S3 connector");
     }
 
     @Override
