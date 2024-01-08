@@ -135,7 +135,7 @@ dependencies {
     testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
 
     testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
-    testImplementation 'org.assertj:assertj-core:3.24.2'
+    testImplementation 'org.assertj:assertj-core:3.25.0'
 
     testImplementation "io.findify:s3mock_2.11:0.2.6"
 
