@@ -19,18 +19,54 @@ package io.aiven.kafka.connect;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.github.dockerjava.api.model.Ulimit;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.TestInfo;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
 
+public interface IntegrationBase {
 
-public interface KafkaIntegrationBase {
+    static LocalStackContainer createS3Container() {
+        return new LocalStackContainer(
+            DockerImageName.parse("localstack/localstack:2.0.2")
+        ).withServices(LocalStackContainer.Service.S3);
+    }
+
+    static AmazonS3 createS3Client(final LocalStackContainer localStackContainer) {
+        return AmazonS3ClientBuilder
+            .standard()
+            .withEndpointConfiguration(
+                new AwsClientBuilder.EndpointConfiguration(
+                    localStackContainer.getEndpointOverride(LocalStackContainer.Service.S3).toString(),
+                    localStackContainer.getRegion()
+                )
+            )
+            .withCredentials(
+                new AWSStaticCredentialsProvider(
+                    new BasicAWSCredentials(localStackContainer.getAccessKey(), localStackContainer.getSecretKey())
+                )
+            )
+            .build();
+    }
 
     default AdminClient newAdminClient(final KafkaContainer kafka) {
         final Properties adminClientConfig = new Properties();
@@ -39,8 +75,8 @@ public interface KafkaIntegrationBase {
     }
 
     default ConnectRunner newConnectRunner(final KafkaContainer kafka,
-                                                  final File pluginDir,
-                                                  final int offsetFlushIntervalMs) {
+                                           final File pluginDir,
+                                           final int offsetFlushIntervalMs) {
         return new ConnectRunner(pluginDir, kafka.getBootstrapServers(), offsetFlushIntervalMs);
     }
 
@@ -50,7 +86,7 @@ public interface KafkaIntegrationBase {
         assert distFile.exists();
 
         final String cmd = String.format("tar -xf %s --strip-components=1 -C %s",
-            distFile.toString(), pluginDir.toString());
+            distFile, pluginDir.toString());
         final Process p = Runtime.getRuntime().exec(cmd);
         assert p.waitFor() == 0;
     }
@@ -63,7 +99,7 @@ public interface KafkaIntegrationBase {
         return pluginDir;
     }
 
-    default KafkaContainer createKafkaContainer() {
+    static KafkaContainer createKafkaContainer() {
         return new KafkaContainer("5.2.1")
             .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false")
             .withNetwork(Network.newNetwork())
@@ -71,5 +107,21 @@ public interface KafkaIntegrationBase {
             .withCreateContainerCmdModifier(cmd ->
                 cmd.getHostConfig().withUlimits(List.of(new Ulimit("nofile", 30000L, 30000L)))
             );
+    }
+
+    static String topicName(final TestInfo testInfo) {
+        return testInfo.getTestMethod().get().getName() + "-" + testInfo.getDisplayName().hashCode();
+    }
+
+    static void createTopics(final AdminClient adminClient, final List<String> topicNames)
+        throws ExecutionException, InterruptedException {
+        final var newTopics = topicNames.stream()
+            .map(s -> new NewTopic(s, 4, (short) 1))
+            .collect(Collectors.toList());
+        adminClient.createTopics(newTopics).all().get();
+    }
+
+    static void waitForRunningContainer(final Container<?> kafka) {
+        Awaitility.await().atMost(Duration.ofMinutes(1)).until(kafka::isRunning);
     }
 }

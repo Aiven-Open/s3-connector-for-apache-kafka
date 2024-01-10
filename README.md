@@ -1,14 +1,28 @@
 # Aiven's S3 Sink Connector for Apache Kafka
 
-![Pull Request Workflow](https://github.com/aiven/s3-connector-for-apache-kafka/workflows/Pull%20Request%20Workflow/badge.svg)
+![Pull Request Workflow](https://github.com/Aiven-Open/s3-connector-for-apache-kafka/actions/workflows/main_push_and_pull_request_workflow.yml/badge.svg)
 
 This is a sink Apache Kafka Connect connector that stores Apache Kafka messages in an AWS S3 bucket.
 
-The connector requires Java 11 or newer for development and production.
+**Table of Contents**
+
+- [How it works](#how-it-works)
+- [Data Format](#data-format)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Development](#development)
+
 
 ## How it works
 
 The connector subscribes to the specified Kafka topics and collects messages coming in them and periodically dumps the collected data to the specified bucket in AWS S3.
+
+### Requirements
+
+The connector requires Java 11 or newer for development and production.
+
+#### Authorization
+
 The connector needs the following permissions to the specified bucket:
 * ``s3:GetObject``
 * ``s3:PutObject``
@@ -16,9 +30,9 @@ The connector needs the following permissions to the specified bucket:
 * ``s3:ListMultipartUploadParts``
 * ``s3:ListBucketMultipartUploads``
 
-In case of ``Access Denied`` error see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
+In case of ``Access Denied`` error, see https://aws.amazon.com/premiumsupport/knowledge-center/s3-troubleshoot-403/
 
-### Credentials
+#### Authentication
 
 To make the connector work, a user has to specify AWS credentials that allow writing to S3.
 There are two ways to specify AWS credentials in this connector:
@@ -43,6 +57,8 @@ It is also important to specify `aws.sts.role.external.id` for the security reas
 (see some details [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html)).
 
 ### File name format
+
+> File name format is tightly related to [Record Grouping](#record-grouping)
 
 The connector uses the following format for output files (blobs):
 `<prefix><filename>`.
@@ -73,7 +89,7 @@ which value can be `true` or `false` (the default).
 For example: `{{topic}}-{{partition}}-{{start_offset:padding=true}}.gz` 
 will produce file names like `mytopic-1-00000000000000000001.gz`.
 
-To add zero padding to partition number, you need to add additional parameter `padding` in the `partiiton` variable,
+To add zero padding to partition number, you need to add additional parameter `padding` in the `partition` variable,
 which value can be `true` or `false` (the default).
 For example: `{{topic}}-{{partition:padding=true}}-{{start_offset}}.gz`
 will produce file names like `mytopic-0000000001-1.gz`.
@@ -94,6 +110,9 @@ record grouping modes are:
 - `topic`, `partition`, `start_offset`, and `timestamp` - grouping by the topic,
   partition, and timestamp;
 - `key` - grouping by the key.
+- `key`, `topic`, `partition` - grouping by the topic, partition, and key.
+
+See record grouping in the next section for more details.
 
 If the file name template is not specified, the default value is
 `{{topic}}-{{partition}}-{{start_offset}}` (+ `.gz` when compression is
@@ -102,8 +121,18 @@ enabled).
 ### Record grouping
 
 Incoming records are being grouped until flushed.
+The connector flushes grouped records in one file per `offset.flush.interval.ms` setting for partitions that have received new messages during this period. The setting defaults to 60 seconds.
+
+Record grouping, similar to Kafka topics, has 2 modes:
+
+- Changelog: Connector groups all records in the order received from a Kafka topic, and stores all of them in a file.
+- Compact: Connector groups all records by an identity (e.g. key) and only keeps the latest value stored in a file.
+
+Modes are defined implicitly by the fields used of the [file name template](#file-name-format).
 
 #### Grouping by the topic and partition
+
+*Mode: Changelog*
 
 In this mode, the connector groups records by the topic and partition.
 When a file is written, an offset of the first record in it is added to
@@ -138,6 +167,8 @@ In this case, there will be two files `topicA-part0-off0` and
 `topicA-part0-off2` with two records in each.
 
 #### Grouping by the key
+
+*Mode: Compact*
 
 In this mode, the connector groups records by the Kafka key. It always
 puts one record in a file, the latest record that arrived before a flush
@@ -208,8 +239,9 @@ Connector class name, in this case: `io.aiven.kafka.connect.s3.AivenKafkaConnect
 
 ### S3 Object Names
 
-S3 connector stores series of files in the specified bucket. Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]`. The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
-The connector creates one file per Apache Kafka Connect `offset.flush.interval.ms` setting for partitions that have received new messages during that period. The setting defaults to 60 seconds.
+S3 connector stores series of files in the specified bucket. 
+Each object is named using pattern `[<aws.s3.prefix>]<topic>-<partition>-<startoffset>[.gz]` (see [#file-name-format](File name format section) for more patterns). 
+The `.gz` extension is used if gzip compression is used, see `file.compression.type` below.
 
 ### Data File Format
 
@@ -440,40 +472,11 @@ Having `format.output.envelope=false` can produce the following output:
 - Connector works just fine with and without Schema Registry
 - `format.output.envelope=false` is ignored if the value is not of type `org.apache.avro.Schema.Type.RECORD` or `org.apache.avro.Schema.Type.MAP`.
 
-## S3 multi-part uploads
-
-To configure S3 multi-part uploads buffer size change:
- - `aws.s3.part.size.bytes` - The Part Size in 
-   S3 Multi-part Uploads in bytes. 
-   Maximum is `2GB` and default is `5MB`.
-
-## Retry strategy configuration
-
-There are four configuration properties to configure retry strategy exists.
-
-### Apache Kafka connect retry strategy configuration property
-
-- `kafka.retry.backoff.ms` - The retry backoff in milliseconds. This config is used to notify Apache Kafka Connect to retry delivering a message batch or
-  performing recovery in case of transient exceptions. Maximum value is `24` hours.
-
-### AWS S3 retry strategy configuration properties
- 
-- `aws.s3.backoff.delay.ms` - S3 default base sleep time 
-  for non-throttled exceptions in milliseconds. 
-  Default is `100` ms.
-- `aws.s3.backoff.max.delay.ms` - S3 maximum back-off 
-  time before retrying a request in milliseconds. 
-  Default is `20 000` ms.
-- `aws.s3.backoff.max.retries` - Maximum retry limit 
-  (if the value is greater than 30, there can be 
-  integer overflow issues during delay calculation). 
-  Default is `3`.
-
 ## Usage
 
 ### Connector Configuration
 
-**Important Note** Since version `2.6` all existing configuration
+> **Important Note** Since version `2.6` all existing configuration
 is deprecated and will be replaced with new one during a certain transition period (within 2-3 releases)
 
 List of deprecated configuration parameters:
@@ -489,7 +492,7 @@ List of deprecated configuration parameters:
 List of new configuration parameters:
 - `aws.access.key.id` - AWS Access Key ID for accessing S3 bucket.
 - `aws.secret.access.key` - AWS S3 Secret Access Key.
-- `aws.s3.bucket.name` - - Name of an existing bucket for storing the records. Mandatory.
+- `aws.s3.bucket.name` - - Name of an existing bucket for storing the records. Mandatory. See bucket name rules: <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html>
 - `aws.s3.endpoint` - The endpoint configuration (service endpoint & signing region) to be used for requests.
 - `aws.s3.prefix` - [Deprecated] Use `file.name.prefix` and `file.name.template` instead. The prefix that will be added to the file name in the bucket. Can be used for putting output files into a subdirectory.
 - `aws.s3.region` - Name of the region for the bucket used for storing the records. Defaults to `us-east-1`.
@@ -588,13 +591,42 @@ timestamp.timezone=Europe/Berlin
 timestamp.source=wallclock
 ```
 
+### S3 multi-part uploads
+
+To configure S3 multi-part uploads buffer size change:
+- `aws.s3.part.size.bytes` - The Part Size in
+  S3 Multi-part Uploads in bytes.
+  Maximum is `2GB` and default is `5MB`.
+
+### Retry strategy configuration
+
+There are four configuration properties to configure retry strategy exists.
+
+#### Apache Kafka connect retry strategy configuration property
+
+- `kafka.retry.backoff.ms` - The retry backoff in milliseconds. This config is used to notify Apache Kafka Connect to retry delivering a message batch or
+  performing recovery in case of transient exceptions. Maximum value is `24` hours.
+
+#### AWS S3 retry strategy configuration properties
+
+- `aws.s3.backoff.delay.ms` - S3 default base sleep time
+  for non-throttled exceptions in milliseconds.
+  Default is `100` ms.
+- `aws.s3.backoff.max.delay.ms` - S3 maximum back-off
+  time before retrying a request in milliseconds.
+  Default is `20 000` ms.
+- `aws.s3.backoff.max.retries` - Maximum retry limit
+  (if the value is greater than 30, there can be
+  integer overflow issues during delay calculation).
+  Default is `3`.
+
 ## Development
 
 ### Developing together with Commons library
 
-This project depends on [Common Module for Apache Kafka Connect](https://github.com/aiven/commons-for-apache-kafka-connect). Normally, an artifact of it published to a globally accessible repository is used. However, if you need to introduce changes to both this connector and Commons library at the same time, you should short-circuit the development loop via locally published artifacts. Please follow this steps:
+This project depends on [Common Module for Apache Kafka Connect](https://github.com/aiven-open/commons-for-apache-kafka-connect). Normally, an artifact of it published to a globally accessible repository is used. However, if you need to introduce changes to both this connector and Commons library at the same time, you should short-circuit the development loop via locally published artifacts. Please follow this steps:
 1. Checkout the `main` `HEAD` of Commons.
-2. Ensure the version [here](https://github.com/aiven/commons-for-apache-kafka-connect/blob/main/gradle.properties) is with `-SNAPSHOT` prefix.
+2. Ensure the version [here](https://github.com/aiven-open/commons-for-apache-kafka-connect/blob/main/gradle.properties) is with `-SNAPSHOT` prefix.
 3. Make changes to Commons.
 4. Publish it locally with `./gradlew publishToMavenLocal`.
 5. Change the version in the connector's [`build.gradle`](build.gradle) (`ext.aivenConnectCommonsVersion`) to match the published snapshot version of Commons.

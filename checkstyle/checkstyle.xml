@@ -288,7 +288,7 @@
 
         <!-- See http://checkstyle.sourceforge.net/config_metrics.html#ClassDataAbstractionCoupling -->
         <module name="ClassDataAbstractionCoupling">
-            <property name="max" value="10"/>
+            <property name="max" value="11"/>
         </module>
 
         <!-- See http://checkstyle.sourceforge.net/config_metrics.html#BooleanExpressionComplexity -->
@@ -337,6 +337,10 @@
         <module name="AtclauseOrder">
             <property name="tagOrder" value="@param, @return, @throws, @deprecated"/>
             <property name="target" value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF, METHOD_DEF, CTOR_DEF, VARIABLE_DEF"/>
+        </module>
+
+        <module name="ImportControl">
+            <property name="file" value="${config_loc}/import-control.xml" default="checkstyle/import-control.xml"/>
         </module>
     </module>
 </module>

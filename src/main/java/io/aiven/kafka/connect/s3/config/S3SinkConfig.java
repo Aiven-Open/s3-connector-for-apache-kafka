@@ -45,12 +45,12 @@ import io.aiven.kafka.connect.common.config.validators.OutputFieldsValidator;
 import io.aiven.kafka.connect.common.config.validators.TimeZoneValidator;
 import io.aiven.kafka.connect.common.config.validators.TimestampSourceValidator;
 import io.aiven.kafka.connect.common.config.validators.UrlValidator;
-import io.aiven.kafka.connect.common.grouper.RecordGrouperFactory;
 import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.s3.S3OutputStream;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.internal.BucketNameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -235,7 +235,7 @@ public class S3SinkConfig extends AivenCommonConfig {
             AWS_S3_BUCKET_NAME_CONFIG,
             Type.STRING,
             null,
-            new ConfigDef.NonEmptyString(),
+            new BucketNameValidator(),
             Importance.MEDIUM,
             "AWS S3 Bucket name",
             GROUP_AWS,
@@ -310,6 +310,19 @@ public class S3SinkConfig extends AivenCommonConfig {
                 AWS_S3_PART_SIZE
         );
 
+    }
+
+    private static class BucketNameValidator implements ConfigDef.Validator {
+        @Override
+        public void ensureValid(final String name, final Object value) {
+            try {
+                if (value != null) {
+                    BucketNameUtils.validateBucketName((String) value);
+                }
+            } catch (final IllegalArgumentException e) {
+                throw new ConfigException("Illegal bucket name: " + e.getMessage());
+            }
+        }
     }
 
     private static void addS3RetryPolicies(final ConfigDef configDef) {
@@ -600,7 +613,7 @@ public class S3SinkConfig extends AivenCommonConfig {
             AWS_S3_BUCKET,
             Type.STRING,
             null,
-            new ConfigDef.NonEmptyString() {
+            new BucketNameValidator() {
                 @Override
                 public void ensureValid(final String name, final Object o) {
                     LOGGER.info(AWS_S3_BUCKET
@@ -742,15 +755,6 @@ public class S3SinkConfig extends AivenCommonConfig {
             );
         }
 
-        // Special checks for {{key}} filename template.
-        final Template filenameTemplate = getFilenameTemplate();
-        if (RecordGrouperFactory.KEY_RECORD.equals(RecordGrouperFactory.resolveRecordGrouperType(filenameTemplate))) {
-            if (getMaxRecordsPerFile() > 1) {
-                final String msg = String.format("When %s is %s, %s must be either 1 or not set",
-                    FILE_NAME_TEMPLATE_CONFIG, filenameTemplate, FILE_MAX_RECORDS);
-                throw new ConfigException(msg);
-            }
-        }
     }
 
     public AwsAccessSecret getOldAwsCredentials() {

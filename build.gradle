@@ -60,16 +60,11 @@ compileJava {
     options.compilerArgs = ["-Xlint:all", "-Werror"]
 }
 
-javadoc {
-    options.addBooleanOption('html5', true)
-}
-
 jacoco {
     toolVersion = "0.8.7"
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     // For kafka-avro-serializer and kafka-connect-avro-converter
     maven {
@@ -82,15 +77,18 @@ ext {
     // Compatible with Kafka version:
     // https://docs.confluent.io/current/installation/versions-interoperability.html
     confluentPlatformVersion = "4.1.4"
-    amazonS3Version = "1.12.333"
-    amazonSTSVersion = "1.12.332"
+    // Align with version used by commons
+    avroConverterVersion = "7.2.2"
+    aivenConnectCommonsVersion = "0.12.0"
+
+    amazonS3Version = "1.12.629"
+    amazonSTSVersion = "1.12.629"
     slf4jVersion = "1.7.36"
-    aivenConnectCommonsVersion = "0.8.2"
-    junitVersion = "5.9.1"
-    testcontainersVersion = "1.17.5"
-    localstackVersion = "0.2.21"
+    junitVersion = "5.10.1"
+    testcontainersVersion = "1.19.3"
+    localstackVersion = "0.2.23"
     wireMockVersion = "2.35.0"
-    mockitoVersion = "4.8.1"
+    mockitoVersion = "5.8.0"
 }
 
 sourceSets {
@@ -128,8 +126,8 @@ dependencies {
     implementation "com.amazonaws:aws-java-sdk-sts:$amazonSTSVersion"
     implementation "io.aiven:commons-for-apache-kafka-connect:$aivenConnectCommonsVersion"
 
-    testImplementation "org.xerial.snappy:snappy-java:1.1.8.4"
-    testImplementation "com.github.luben:zstd-jni:1.5.2-5"
+    testImplementation "org.xerial.snappy:snappy-java:1.1.10.5"
+    testImplementation "com.github.luben:zstd-jni:1.5.5-11"
 
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
     testImplementation "org.apache.kafka:connect-runtime:$kafkaVersion"
@@ -137,35 +135,34 @@ dependencies {
     testImplementation "org.slf4j:slf4j-simple:$slf4jVersion"
 
     testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+    testImplementation 'org.assertj:assertj-core:3.25.0'
 
     testImplementation "io.findify:s3mock_2.11:0.2.6"
 
-    testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.4.1"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.4.14"
 
     integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     integrationTestImplementation "org.testcontainers:kafka:$testcontainersVersion" // this is not Kafka version
+    integrationTestImplementation "org.testcontainers:localstack:$testcontainersVersion"
     integrationTestImplementation "com.github.tomakehurst:wiremock-jre8:$wireMockVersion"
 
-    integrationTestImplementation("io.confluent:kafka-avro-serializer:$confluentPlatformVersion") {
-        exclude group: "org.apache.kafka", module: "kafka-clients"
-    }
-    integrationTestImplementation("io.confluent:kafka-connect-avro-converter:$confluentPlatformVersion") {
+    // TODO: add avro-converter to ConnectRunner via plugin.path instead of on worker classpath
+    integrationTestImplementation("io.confluent:kafka-connect-avro-converter:$avroConverterVersion") {
         exclude group: "org.apache.kafka", module: "kafka-clients"
     }
 
-    integrationTestImplementation "org.apache.avro:avro:1.11.1"
+    integrationTestImplementation "org.apache.avro:avro:1.11.3"
 
     testImplementation ("org.apache.parquet:parquet-tools:1.11.2") {
         exclude group: "org.slf4j", module: "slf4j-api"
     }
-    testImplementation("org.apache.hadoop:hadoop-mapreduce-client-core:3.3.4") {
+    testImplementation("org.apache.hadoop:hadoop-mapreduce-client-core:3.3.6") {
         exclude group: "org.apache.hadoop", module: "hadoop-yarn-client"
         exclude group: "org.apache.hadoop.thirdparty", module: "hadoop-shaded-protobuf_3_7"
         exclude group: "com.google.guava", module: "guava"
@@ -205,8 +202,7 @@ dependencies {
 
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
-
-    testImplementation 'org.assertj:assertj-core:3.23.1'
+    integrationTestImplementation "org.awaitility:awaitility:4.2.0"
 }
 
 checkstyle {
@@ -220,7 +216,8 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
 
-    dependsOn test, distTar
+    dependsOn distTar
+    shouldRunAfter test
 
     useJUnitPlatform()
 
@@ -257,6 +254,13 @@ jar {
     }
 }
 
+javadoc {
+    options.addBooleanOption('html5', true)
+    // disable missing javadoc lint and show only warning and error messages
+    options.addStringOption('Xdoclint:all,-missing', '-quiet')
+}
+
+
 processResources {
     filesMatching('s3-connector-for-apache-kafka-version.properties') {
         expand(version: version)
@@ -275,7 +279,7 @@ publishing {
             pom {
                 name = "Aiven's S3 Sink Connector for Apache Kafka"
                 description = "Aiven's S3 Sink Connector for Apache Kafka"
-                url = "https://github.com/aiven/s3-connector-for-apache-kafka"
+                url = "https://github.com/aiven-open/s3-connector-for-apache-kafka"
                 organization {
                     name = "Aiven Oy"
                     url = "https://aiven.io"
@@ -300,7 +304,7 @@ publishing {
                 scm {
                     connection = 'scm:git:git://github.com:aiven/s3-connector-for-apache-kafka.git'
                     developerConnection = 'scm:git:ssh://github.com:aiven/s3-connector-for-apache-kafka.git'
-                    url = 'https://github.com/aiven/s3-connector-for-apache-kafka'
+                    url = 'https://github.com/aiven-open/s3-connector-for-apache-kafka'
                 }
             }
         }
@@ -321,7 +325,21 @@ publishing {
 
 signing {
     sign publishing.publications.maven
-    def signingKey = findProperty("signingKey")
-    def signingPassword = findProperty("signingPassword")
-    useInMemoryPgpKeys(signingKey, signingPassword)
+    useGpgCmd()
+    // Some issue in the plugin:
+    // GPG outputs already armored signatures. The plugin also does armoring for `asc` files.
+    // This results in double armored signatures, i.e. garbage.
+    // Override the signature type provider to use unarmored output for `asc` files, which works well with GPG.
+    signatureTypes = new AbstractSignatureTypeProvider() {
+        {
+            BinarySignatureType binary = new BinarySignatureType() {
+                @Override
+                String getExtension() {
+                    return "asc";
+                }
+            }
+            register(binary);
+            setDefaultType(binary.getExtension());
+        }
+    }
 }

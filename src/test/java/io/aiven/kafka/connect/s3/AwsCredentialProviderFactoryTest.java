@@ -27,10 +27,7 @@ import com.amazonaws.regions.Regions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.MatcherAssert.assertThat;
-
-
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class AwsCredentialProviderFactoryTest {
 
@@ -40,8 +37,9 @@ public class AwsCredentialProviderFactoryTest {
     @BeforeEach
     public void setUp() {
         factory = new AwsCredentialProviderFactory();
-        props = new HashMap<String, String>();
+        props = new HashMap<>();
         props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "anyBucket");
+        props.put(S3SinkConfig.AWS_S3_BUCKET_NAME_CONFIG, "any-bucket");
     }
 
     @Test
@@ -56,7 +54,7 @@ public class AwsCredentialProviderFactoryTest {
         final var config = new S3SinkConfig(props);
 
         final var credentialProvider = factory.getProvider(config);
-        assertThat(credentialProvider, instanceOf(STSAssumeRoleSessionCredentialsProvider.class));
+        assertThat(credentialProvider).isInstanceOf(STSAssumeRoleSessionCredentialsProvider.class);
     }
 
     @Test
@@ -67,6 +65,6 @@ public class AwsCredentialProviderFactoryTest {
         final var config = new S3SinkConfig(props);
 
         final var credentialProvider = factory.getProvider(config);
-        assertThat(credentialProvider, instanceOf(AWSStaticCredentialsProvider.class));
+        assertThat(credentialProvider).isInstanceOf(AWSStaticCredentialsProvider.class);
     }
 }
