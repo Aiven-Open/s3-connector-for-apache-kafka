@@ -33,7 +33,7 @@ There are two ways to specify AWS credentials in this connector:
 3) Use default provider chain or custom provider
    
     If you prefer to use AWS default provider chain, you can leave {`aws.access.key.id` and `aws.secret.access.key`} and
-    {`aws.sts.role.arn`, `aws.sts.role.session.name`} can leave blank. In case you prefer to build your own custom
+    {`aws.sts.role.arn`, `aws.sts.role.session.name`} blank. In case you prefer to build your own custom
     provider, pass the custom provider class as a parameter to `aws.credential.provider`
 
 It is important not to use both 1 and 2 simultaneously.
