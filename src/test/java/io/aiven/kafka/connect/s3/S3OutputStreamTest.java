@@ -32,6 +32,7 @@ import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
 import com.amazonaws.services.s3.model.UploadPartResult;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -56,6 +57,8 @@ class S3OutputStreamTest {
     static final String FILE_KEY = "some_key";
 
     static final String UPLOAD_ID = "some_upload_id";
+
+    static final String SSEA_NAME = "AES256";
 
     @Mock
     AmazonS3 mockedAmazonS3;
@@ -108,6 +111,7 @@ class S3OutputStreamTest {
 
         assertThat(initiateMultipartUploadRequest.getBucketName()).isEqualTo(BUCKET_NAME);
         assertThat(initiateMultipartUploadRequest.getKey()).isEqualTo(FILE_KEY);
+        assertThat(initiateMultipartUploadRequest.getObjectMetadata().getContentLength()).isEqualTo(0);
 
         assertCompleteMultipartUploadRequest(
             completeMultipartUploadRequestCaptor.getValue(),
@@ -135,6 +139,26 @@ class S3OutputStreamTest {
         verify(mockedAmazonS3).abortMultipartUpload(abortMultipartUploadRequestCaptor.capture());
 
         assertAbortMultipartUploadRequest(abortMultipartUploadRequestCaptor.getValue());
+    }
+
+    @Test
+    void sendsServerSideEncryptionAlgorithmNameWhenPassed() throws Exception {
+        when(mockedAmazonS3.initiateMultipartUpload(any(InitiateMultipartUploadRequest.class)))
+                .thenReturn(newInitiateMultipartUploadResult());
+        when(mockedAmazonS3.uploadPart(any(UploadPartRequest.class)))
+                .thenReturn(newUploadPartResult(1, "SOME_ETAG"));
+        when(mockedAmazonS3.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(new CompleteMultipartUploadResult());
+
+        try (final var out = new S3OutputStream(BUCKET_NAME, FILE_KEY, 100, mockedAmazonS3, SSEA_NAME)) {
+            out.write(1);
+        }
+
+        verify(mockedAmazonS3).initiateMultipartUpload(initiateMultipartUploadRequestCaptor.capture());
+
+        final var initiateMultipartUploadRequest = initiateMultipartUploadRequestCaptor.getValue();
+
+        assertEquals(SSEA_NAME, initiateMultipartUploadRequest.getObjectMetadata().getSSEAlgorithm());
     }
 
     @Test

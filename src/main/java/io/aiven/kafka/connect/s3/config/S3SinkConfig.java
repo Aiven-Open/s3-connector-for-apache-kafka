@@ -99,6 +99,7 @@ public class S3SinkConfig extends AivenCommonConfig {
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
+    public static final String AWS_S3_SSEA_NAME_CONFIG = "aws.s3.ssea.name";
     public static final String AWS_S3_ENDPOINT_CONFIG = "aws.s3.endpoint";
     public static final String AWS_S3_REGION_CONFIG = "aws.s3.region";
     public static final String AWS_S3_PART_SIZE = "aws.s3.part.size.bytes";
@@ -226,6 +227,19 @@ public class S3SinkConfig extends AivenCommonConfig {
             awsGroupCounter++,
             ConfigDef.Width.NONE,
             AWS_S3_BUCKET_NAME_CONFIG
+        );
+
+        configDef.define(
+            AWS_S3_SSEA_NAME_CONFIG,
+            Type.STRING,
+            null,
+            new ConfigDef.NonEmptyString(),
+            Importance.MEDIUM,
+            "AWS S3 Server Side Encryption Algorithm",
+            GROUP_AWS,
+            awsGroupCounter++,
+            ConfigDef.Width.NONE,
+            AWS_S3_SSEA_NAME_CONFIG
         );
 
         configDef.define(
@@ -779,6 +793,10 @@ public class S3SinkConfig extends AivenCommonConfig {
         return Objects.nonNull(getString(AWS_S3_BUCKET_NAME_CONFIG))
             ? getString(AWS_S3_BUCKET_NAME_CONFIG)
             : getString(AWS_S3_BUCKET);
+    }
+
+    public String getServerSideEncryptionAlgorithmName() {
+        return getString(AWS_S3_SSEA_NAME_CONFIG);
     }
 
     public String getAwsS3Prefix() {
