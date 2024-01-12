@@ -29,9 +29,9 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
-import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,8 +68,7 @@ public class S3OutputStream extends OutputStream {
                           final String key,
                           final int partSize,
                           final AmazonS3 client,
-                          final String serverSideEncryptionAlgorithm
-                      ) {
+                          final String serverSideEncryptionAlgorithm) {
         this.bucketName = bucketName;
         this.key = key;
         this.client = client;
