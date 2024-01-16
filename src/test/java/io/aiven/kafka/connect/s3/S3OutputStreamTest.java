@@ -110,7 +110,7 @@ class S3OutputStreamTest {
 
         assertThat(initiateMultipartUploadRequest.getBucketName()).isEqualTo(BUCKET_NAME);
         assertThat(initiateMultipartUploadRequest.getKey()).isEqualTo(FILE_KEY);
-        assertThat(initiateMultipartUploadRequest.getObjectMetadata().getContentLength()).isEqualTo(0);
+        assertThat(initiateMultipartUploadRequest.getObjectMetadata().getContentLength()).isZero();
 
         assertCompleteMultipartUploadRequest(
             completeMultipartUploadRequestCaptor.getValue(),
