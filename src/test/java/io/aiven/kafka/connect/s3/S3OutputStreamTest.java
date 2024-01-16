@@ -157,7 +157,7 @@ class S3OutputStreamTest {
 
         final var initiateMultipartUploadRequest = initiateMultipartUploadRequestCaptor.getValue();
 
-        assertThat(SSEA_NAME).isEqualTo(initiateMultipartUploadRequest.getObjectMetadata().getSSEAlgorithm());
+        assertThat(initiateMultipartUploadRequest.getObjectMetadata().getSSEAlgorithm()).isEqualTo(SSEA_NAME);
     }
 
     @Test
