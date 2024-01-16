@@ -235,11 +235,12 @@ public class S3SinkConfig extends AivenCommonConfig {
             null,
             new ConfigDef.NonEmptyString(),
             Importance.MEDIUM,
-            "AWS S3 Server Side Encryption Algorithm",
+            "AWS S3 Server Side Encryption Algorithm. Example values: 'AES256', 'aws:kms'.",
             GROUP_AWS,
             awsGroupCounter++,
             ConfigDef.Width.NONE,
-            AWS_S3_SSEA_NAME_CONFIG
+            AWS_S3_SSEA_NAME_CONFIG,
+            "Example: 'AES256' for S3-managed keys, 'aws:kms' for AWS KMS-managed keys."
         );
 
         configDef.define(
