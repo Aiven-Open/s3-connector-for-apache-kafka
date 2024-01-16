@@ -617,7 +617,7 @@ There are four configuration properties to configure retry strategy exists.
 
 ### AWS S3 server side encryption properties
 
-- `aws.s3.ssea.name` - The name of the Server-side encryption algorithm to use for uploads. If unset the default SSE-S3 is used.
+- `aws.s3.sse.algorithm` - The name of the Server-side encryption algorithm to use for uploads. If unset the default SSE-S3 is used.
 - To use SSE-S3 set to `AES256`
 - To use SSE-KMS set to `aws:kms`
 - To use DSSE-KMS set to `aws:kms:dsse`

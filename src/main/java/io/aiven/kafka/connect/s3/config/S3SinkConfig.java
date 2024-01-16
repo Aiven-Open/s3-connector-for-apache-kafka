@@ -99,7 +99,7 @@ public class S3SinkConfig extends AivenCommonConfig {
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
-    public static final String AWS_S3_SSEA_NAME_CONFIG = "aws.s3.ssea.name";
+    public static final String AWS_S3_SSE_ALGORITHM_CONFIG = "aws.s3.sse.algorithm";
     public static final String AWS_S3_ENDPOINT_CONFIG = "aws.s3.endpoint";
     public static final String AWS_S3_REGION_CONFIG = "aws.s3.region";
     public static final String AWS_S3_PART_SIZE = "aws.s3.part.size.bytes";
@@ -230,7 +230,7 @@ public class S3SinkConfig extends AivenCommonConfig {
         );
 
         configDef.define(
-            AWS_S3_SSEA_NAME_CONFIG,
+            AWS_S3_SSE_ALGORITHM_CONFIG,
             Type.STRING,
             null,
             new ConfigDef.NonEmptyString(),
@@ -239,7 +239,7 @@ public class S3SinkConfig extends AivenCommonConfig {
             GROUP_AWS,
             awsGroupCounter++,
             ConfigDef.Width.NONE,
-            AWS_S3_SSEA_NAME_CONFIG,
+            AWS_S3_SSE_ALGORITHM_CONFIG,
             "Example: 'AES256' for S3-managed keys, 'aws:kms' for AWS KMS-managed keys."
         );
 
@@ -797,7 +797,7 @@ public class S3SinkConfig extends AivenCommonConfig {
     }
 
     public String getServerSideEncryptionAlgorithmName() {
-        return getString(AWS_S3_SSEA_NAME_CONFIG);
+        return getString(AWS_S3_SSE_ALGORITHM_CONFIG);
     }
 
     public String getAwsS3Prefix() {
