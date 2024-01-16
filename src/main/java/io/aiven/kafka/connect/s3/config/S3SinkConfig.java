@@ -229,6 +229,8 @@ public class S3SinkConfig extends AivenCommonConfig {
             AWS_S3_BUCKET_NAME_CONFIG
         );
 
+        // AWS S3 Server Side Encryption Algorithm configuration
+        // Example values: 'AES256' for S3-managed keys, 'aws:kms' for AWS KMS-managed keys
         configDef.define(
             AWS_S3_SSE_ALGORITHM_CONFIG,
             Type.STRING,
@@ -239,8 +241,7 @@ public class S3SinkConfig extends AivenCommonConfig {
             GROUP_AWS,
             awsGroupCounter++,
             ConfigDef.Width.NONE,
-            AWS_S3_SSE_ALGORITHM_CONFIG,
-            "Example: 'AES256' for S3-managed keys, 'aws:kms' for AWS KMS-managed keys."
+            AWS_S3_SSE_ALGORITHM_CONFIG
         );
 
         configDef.define(
