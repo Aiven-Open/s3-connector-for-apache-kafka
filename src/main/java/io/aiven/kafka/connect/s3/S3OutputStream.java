@@ -29,6 +29,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AbortMultipartUploadRequest;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
 import org.slf4j.Logger;
@@ -52,17 +53,28 @@ public class S3OutputStream extends OutputStream {
 
     private final int partSize;
 
+    private final String serverSideEncryptionAlgorithm;
+
     private boolean closed = false;
 
     public S3OutputStream(final String bucketName,
                           final String key,
                           final int partSize,
                           final AmazonS3 client) {
+        this(bucketName, key, partSize, client, null);
+    }
+
+    public S3OutputStream(final String bucketName,
+                          final String key,
+                          final int partSize,
+                          final AmazonS3 client,
+                          final String serverSideEncryptionAlgorithm) {
         this.bucketName = bucketName;
         this.key = key;
         this.client = client;
         this.partSize = partSize;
         this.byteBuffer = ByteBuffer.allocate(partSize);
+        this.serverSideEncryptionAlgorithm = serverSideEncryptionAlgorithm;
     }
 
     @Override
@@ -93,9 +105,20 @@ public class S3OutputStream extends OutputStream {
     private MultipartUpload newMultipartUpload() throws IOException {
         logger.debug("Create new multipart upload request");
         final var initialRequest = new InitiateMultipartUploadRequest(bucketName, key);
+        initialRequest.setObjectMetadata(this.buildObjectMetadata());
         final var initiateResult = client.initiateMultipartUpload(initialRequest);
         logger.debug("Upload ID: {}", initiateResult.getUploadId());
         return new MultipartUpload(initiateResult.getUploadId());
+    }
+
+    private ObjectMetadata buildObjectMetadata() {
+        final ObjectMetadata metadata = new ObjectMetadata();
+
+        if (this.serverSideEncryptionAlgorithm != null) {
+            metadata.setSSEAlgorithm(this.serverSideEncryptionAlgorithm);
+        }
+
+        return metadata;
     }
 
     @Override
