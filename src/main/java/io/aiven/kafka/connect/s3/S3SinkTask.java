@@ -162,7 +162,8 @@ public class S3SinkTask extends SinkTask {
         final var fullKey = config.usesFileNameTemplate() ? filename : oldFullKey(record);
         return new S3OutputStream(
             config.getAwsS3BucketName(),
-            fullKey, config.getAwsS3PartSize(),
+            fullKey,
+            config.getAwsS3PartSize(),
             s3Client,
             config.getServerSideEncryptionAlgorithmName()
         );
