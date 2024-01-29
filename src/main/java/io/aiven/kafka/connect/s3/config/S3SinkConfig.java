@@ -99,7 +99,7 @@ public class S3SinkConfig extends AivenCommonConfig {
 
     public static final String AWS_ACCESS_KEY_ID_CONFIG = "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY_CONFIG = "aws.secret.access.key";
-    public static final String AWS_CREDENTIAL_PROVIDER_CONFIG = "aws.credential.provider";
+    public static final String AWS_CREDENTIALS_PROVIDER_CONFIG = "aws.credentials.provider";
     public static final String AWS_CREDENTIAL_PROVIDER_DEFAULT =
             "com.amazonaws.auth.DefaultAWSCredentialsProviderChain";
     public static final String AWS_S3_BUCKET_NAME_CONFIG = "aws.s3.bucket.name";
@@ -220,15 +220,21 @@ public class S3SinkConfig extends AivenCommonConfig {
         );
 
         configDef.define(
-                AWS_CREDENTIAL_PROVIDER_CONFIG,
+                AWS_CREDENTIALS_PROVIDER_CONFIG,
                 Type.CLASS,
                 AWS_CREDENTIAL_PROVIDER_DEFAULT,
                 Importance.MEDIUM,
-                "AWS Credential Provider",
+                "When you initialize a new "
+                        + "service client without supplying any arguments, "
+                        + "the AWS SDK for Java attempts to find temporary "
+                        + "credentials by using the default credential "
+                        + "provider chain implemented by the "
+                        + "DefaultAWSCredentialsProviderChain class.",
+
                 GROUP_AWS,
                 awsGroupCounter++,
                 ConfigDef.Width.NONE,
-                AWS_CREDENTIAL_PROVIDER_CONFIG
+                AWS_CREDENTIALS_PROVIDER_CONFIG
         );
 
         configDef.define(
@@ -721,20 +727,20 @@ public class S3SinkConfig extends AivenCommonConfig {
             if (!awsNewSecret.isValid()) {
                 final AwsAccessSecret awsOldSecret = getOldAwsCredentials();
                 if (!awsOldSecret.isValid()) {
-                    LOGGER.info("Connector use % as credential Provider, "
-                                    + "when configuration for {%s, %s} OR {%s, %s} are absent",
-                            AWS_CREDENTIAL_PROVIDER_CONFIG,
+                    LOGGER.info("Connector use {} as credential Provider, "
+                                    + "when configuration for {{}, {}} OR {{}, {}} are absent",
+                            AWS_CREDENTIALS_PROVIDER_CONFIG,
                             AWS_ACCESS_KEY_ID_CONFIG, AWS_SECRET_ACCESS_KEY_CONFIG,
                             AWS_STS_ROLE_ARN, AWS_STS_ROLE_SESSION_NAME);
                 } else {
                     LOGGER.error(
                         String.format(
-                            "Config options %s and %s are deprecated",
+                            "Config options {} and {} are deprecated",
                             AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
                         ));
                 }
             }
-        } else if (awsStsRole.isValid()) {
+        } else {
             final AwsStsEndpointConfig stsEndpointConfig = getStsEndpointConfig();
             if (!stsEndpointConfig.isValid()
                 && !stsEndpointConfig.getServiceEndpoint().equals(AwsStsEndpointConfig.AWS_STS_GLOBAL_ENDPOINT)) {
@@ -938,7 +944,7 @@ public class S3SinkConfig extends AivenCommonConfig {
         return Objects.isNull(getString(AWS_S3_PREFIX_CONFIG)) && Objects.isNull(getString(AWS_S3_PREFIX));
     }
 
-    public AWSCredentialsProvider getCredentials() {
-        return getConfiguredInstance(AWS_CREDENTIAL_PROVIDER_CONFIG, AWSCredentialsProvider.class);
+    public AWSCredentialsProvider getCustomCredentialsProvider() {
+        return getConfiguredInstance(AWS_CREDENTIALS_PROVIDER_CONFIG, AWSCredentialsProvider.class);
     }
 }
