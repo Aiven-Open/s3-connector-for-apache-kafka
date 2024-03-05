@@ -44,8 +44,13 @@ There are two ways to specify AWS credentials in this connector:
 
    The connector will request a temporary token from the AWS STS service and assume a role from another AWS account.
    It requires `aws.sts.role.arn`, `aws.sts.role.session.name` to be specified.
+3) Use default provider chain or custom provider
+   
+    If you prefer to use AWS default provider chain, you can leave {`aws.access.key.id` and `aws.secret.access.key`} and
+    {`aws.sts.role.arn`, `aws.sts.role.session.name`} blank. In case you prefer to build your own custom
+    provider, pass the custom provider class as a parameter to `aws.credential.provider`
 
-It is important not to use both.
+It is important not to use both 1 and 2 simultaneously.
 Using option 2, it is recommended to specify the S3 bucket region in `aws.s3.region` and the
 corresponding AWS STS endpoint in `aws.sts.config.endpoint`. It's better to specify both or none.
 It is also important to specify `aws.sts.role.external.id` for the security reason.
