@@ -85,7 +85,7 @@ ext {
     amazonSTSVersion = "1.12.649"
     slf4jVersion = "1.7.36"
     junitVersion = "5.10.2"
-    testcontainersVersion = "1.19.6"
+    testcontainersVersion = "1.19.7"
     localstackVersion = "0.2.23"
     wireMockVersion = "2.35.0"
     mockitoVersion = "5.10.0"
