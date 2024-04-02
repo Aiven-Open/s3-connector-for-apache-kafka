@@ -144,7 +144,7 @@ dependencies {
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.5.1"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.5.3"
 
     integrationTestImplementation "cloud.localstack:localstack-utils:$localstackVersion"
     integrationTestImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
