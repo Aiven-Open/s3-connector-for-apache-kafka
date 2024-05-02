@@ -202,7 +202,7 @@ dependencies {
 
     // Make test utils from 'test' available in 'integration-test'
     integrationTestImplementation sourceSets.test.output
-    integrationTestImplementation "org.awaitility:awaitility:4.2.0"
+    integrationTestImplementation "org.awaitility:awaitility:4.2.1"
 }
 
 checkstyle {
