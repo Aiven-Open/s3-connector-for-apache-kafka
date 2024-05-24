@@ -22,6 +22,7 @@ import io.aiven.kafka.connect.s3.config.AwsCredentialProviderFactory;
 import io.aiven.kafka.connect.s3.config.S3SinkConfig;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,5 +67,13 @@ public class AwsCredentialProviderFactoryTest {
 
         final var credentialProvider = factory.getProvider(config);
         assertThat(credentialProvider).isInstanceOf(AWSStaticCredentialsProvider.class);
+    }
+
+    @Test
+    void createDefaultCredentialsWhenNoCredentialsSpecified() {
+        final var config = new S3SinkConfig(props);
+
+        final var credentialProvider = factory.getProvider(config);
+        assertThat(credentialProvider).isInstanceOf(DefaultAWSCredentialsProviderChain.class);
     }
 }

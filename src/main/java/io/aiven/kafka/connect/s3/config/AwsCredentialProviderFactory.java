@@ -29,7 +29,16 @@ public class AwsCredentialProviderFactory {
         if (config.hasAwsStsRole()) {
             return getStsProvider(config);
         }
-        return getBasicAwsCredentialsProvider(config);
+        final AwsAccessSecret awsCredentials = config.getAwsCredentials();
+        if (!awsCredentials.isValid()) {
+            return config.getCustomCredentialsProvider();
+        }
+        return new AWSStaticCredentialsProvider(
+                new BasicAWSCredentials(
+                        awsCredentials.getAccessKeyId().value(),
+                        awsCredentials.getSecretAccessKey().value()
+                )
+        );
     }
 
     private AWSCredentialsProvider getStsProvider(final S3SinkConfig config) {
@@ -55,15 +64,4 @@ public class AwsCredentialProviderFactory {
         }
         return AWSSecurityTokenServiceClientBuilder.defaultClient();
     }
-
-    private AWSCredentialsProvider getBasicAwsCredentialsProvider(final S3SinkConfig config) {
-        final AwsAccessSecret awsCredentials = config.getAwsCredentials();
-        return new AWSStaticCredentialsProvider(
-                new BasicAWSCredentials(
-                        awsCredentials.getAccessKeyId().value(),
-                        awsCredentials.getSecretAccessKey().value()
-                )
-        );
-    }
-
 }
