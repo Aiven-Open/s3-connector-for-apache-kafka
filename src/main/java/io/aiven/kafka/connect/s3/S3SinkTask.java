@@ -104,7 +104,7 @@ public class S3SinkTask extends SinkTask {
                                 credentialFactory.getProvider(config)
                         ).withClientConfiguration(clientConfig);
         if (Objects.isNull(awsEndpointConfig)) {
-            s3ClientBuilder.withRegion(config.getAwsS3Region());
+            s3ClientBuilder.withRegion(config.getAwsS3Region().getName());
         } else {
             s3ClientBuilder.withEndpointConfiguration(awsEndpointConfig).withPathStyleAccessEnabled(true);
         }
