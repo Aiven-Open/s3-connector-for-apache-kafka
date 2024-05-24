@@ -49,6 +49,8 @@ import io.aiven.kafka.connect.common.templating.Template;
 import io.aiven.kafka.connect.s3.S3OutputStream;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.internal.BucketNameUtils;
 import org.slf4j.Logger;
@@ -800,15 +802,15 @@ public class S3SinkConfig extends AivenCommonConfig {
             : getString(AWS_S3_ENDPOINT);
     }
 
-    public Regions getAwsS3Region() {
+    public Region getAwsS3Region() {
         // we have priority of properties if old one not set or both old and new one set
         // the new property value will be selected
         if (Objects.nonNull(getString(AWS_S3_REGION_CONFIG))) {
-            return Regions.fromName(getString(AWS_S3_REGION_CONFIG));
+            return RegionUtils.getRegion(getString(AWS_S3_REGION_CONFIG));
         } else if (Objects.nonNull(getString(AWS_S3_REGION))) {
-            return Regions.fromName(getString(AWS_S3_REGION));
+            return RegionUtils.getRegion(getString(AWS_S3_REGION));
         } else {
-            return Regions.US_EAST_1;
+            return RegionUtils.getRegion(Regions.US_EAST_1.getName());
         }
     }
 
@@ -948,9 +950,8 @@ public class S3SinkConfig extends AivenCommonConfig {
         public void ensureValid(final String name, final Object value) {
             if (Objects.nonNull(value)) {
                 final String valueStr = (String) value;
-                try {
-                    Regions.fromName(valueStr);
-                } catch (final IllegalArgumentException e) {
+                final Region region = RegionUtils.getRegion(valueStr);
+                if (!RegionUtils.getRegions().contains(region)) {
                     throw new ConfigException(
                         name, valueStr,
                         "supported values are: " + SUPPORTED_AWS_REGIONS);
