@@ -81,7 +81,7 @@ ext {
     avroConverterVersion = "7.2.2"
     aivenConnectCommonsVersion = "0.12.0"
 
-    amazonS3Version = "1.12.729"
+    amazonS3Version = "1.12.767"
     amazonSTSVersion = "1.12.729"
     slf4jVersion = "1.7.36"
     junitVersion = "5.10.2"
