@@ -1,5 +1,8 @@
 # Aiven's S3 Sink Connector for Apache Kafka
 
+> [!IMPORTANT]  
+> The Aiven S3 Connector for Apache Kafka development has been moved to https://github.com/Aiven-Open/commons-for-apache-kafka-connect/
+
 ![Pull Request Workflow](https://github.com/Aiven-Open/s3-connector-for-apache-kafka/actions/workflows/main_push_and_pull_request_workflow.yml/badge.svg)
 
 This is a sink Apache Kafka Connect connector that stores Apache Kafka messages in an AWS S3 bucket.
