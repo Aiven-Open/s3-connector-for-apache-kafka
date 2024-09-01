@@ -157,7 +157,7 @@ dependencies {
         exclude group: "org.apache.kafka", module: "kafka-clients"
     }
 
-    integrationTestImplementation "org.apache.avro:avro:1.11.3"
+    integrationTestImplementation "org.apache.avro:avro:1.12.0"
 
     testImplementation ("org.apache.parquet:parquet-tools:1.11.2") {
         exclude group: "org.slf4j", module: "slf4j-api"
